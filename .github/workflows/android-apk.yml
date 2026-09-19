@@ -1,0 +1,45 @@
+name: Build Cinderkeep Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build mobile bundle
+        run: npm run mobile:build
+      - name: Create Android project
+        run: npx cap add android
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --stacktrace
+      - name: Collect APK
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.0.1-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cinderkeep-v3.0.1-debug-apk
+          path: release/Cinderkeep-v3.0.1-debug.apk
+          retention-days: 30
