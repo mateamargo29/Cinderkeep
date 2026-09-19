@@ -1,0 +1,299 @@
+    if (remainingDamage > 0) e.hp -= remainingDamage;
+    const afterDurability = Math.max(0, e.hp) + Math.max(0, e.shield);
+    this.runStats.damageDealt += Math.max(0, beforeDurability - afterDurability);
+    e.flash = 1;
+    if (slow > 0) {
+      e.slow = Math.max(e.slow, 1.15);
+      const resistedSlow = 1 - (1 - slowFactor) * (1 - e.slowResist);
+      e.slowFactor = Math.min(e.slowFactor, resistedSlow);
+    }
+    if (burnDps > 0) {
+      e.burn = Math.max(e.burn, 2.8);
+      e.burnDps = Math.max(e.burnDps, burnDps);
+    }
+    audio.sfxHit();
+    this.float(e.x, e.y - 18, `${Math.round(dealt)}`, e.maxShield > 0 && e.shield > 0 ? "#a9d8e8" : "#eee8e0");
+    if (e.hp <= 0) this.kill(e);
+  }
+
+  private kill(e: Enemy) {
+    e.alive = false;
+    const baseGold = e.gold + (hasProjectEffect(this.researchedTech, "salvage") ? 2 : 0);
+    const earnedGold = Math.max(1, Math.round(baseGold * (1 + this.profile.upgrades.salvage * 0.05)));
+    this.gold += earnedGold;
+    this.runStats.goldEarned += earnedGold;
+    this.remaining = Math.max(0, this.remaining - 1);
+    this.missionKills += 1;
+    this.runStats.kills += 1;
+    if (e.boss) { this.missionBossKills += 1; this.runStats.bossKills += 1; }
+    this.hitstop = e.boss ? 0.09 : 0.035;
+    this.trauma = Math.min(1, this.trauma + (e.boss ? 0.5 : 0.12));
+    audio.sfxKill();
+    this.burst(e.x, e.y, 16, "#c45c26");
+    this.float(e.x, e.y - 8, `+${earnedGold}`, "#c4b08a");
+    if (this.checkImmediateMissionVictory()) return;
+    this.emit();
+  }
+
+  private burst(x: number, y: number, n: number, color: string) {
+    const count = this.settings.reducedEffects ? Math.max(2, Math.ceil(n * 0.45)) : n;
+    for (let i = 0; i < count; i++) {
+      const p = this.particles.find((q) => !q.alive);
+      if (!p) break;
+      const a = Math.random() * Math.PI * 2;
+      const s = 20 + Math.random() * 80;
+      p.alive = true;
+      p.x = x;
+      p.y = y;
+      p.vx = Math.cos(a) * s;
+      p.vy = Math.sin(a) * s;
+      p.life = 0.25 + Math.random() * 0.35;
+      p.maxLife = p.life;
+      p.size = 1.5 + Math.random() * 2.5;
+      p.color = color;
+    }
+  }
+
+  private float(x: number, y: number, text: string, color: string) {
+    const f = this.floats.find((q) => !q.alive);
+    if (!f) return;
+    f.alive = true;
+    f.x = x;
+    f.y = y;
+    f.vy = -28;
+    f.life = 0.7;
+    f.text = text;
+    f.color = color;
+  }
+
+  private ageFx(dt: number) {
+    for (const p of this.particles) {
+      if (!p.alive) continue;
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 40 * dt;
+      if (p.life <= 0) p.alive = false;
+    }
+    for (const f of this.floats) {
+      if (!f.alive) continue;
+      f.life -= dt;
+      f.y += f.vy * dt;
+      if (f.life <= 0) f.alive = false;
+    }
+  }
+
+  private draw() {
+    if (!this.assets) return;
+    const fxScale = this.settings.reducedEffects ? 0.35 : 1;
+    const shake = this.trauma * this.trauma * fxScale;
+    const sx = shake ? (Math.random() * 2 - 1) * 10 * shake : 0;
+    const sy = shake ? (Math.random() * 2 - 1) * 8 * shake : 0;
+    renderFrame(this.ctx, this, this.assets, this.view, this.time, sx, sy, this.mapCanvas);
+  }
+
+  emit() {
+    const t = this.selectedTower();
+    const stats = t ? towerCombat(t.kind, t.dmgLevel, t.rateLevel, this.towerTechEra(t.kind), this.towerBranch(t.kind)) : null;
+    const hud: HudState = {
+      gold: this.gold,
+      lives: this.lives,
+      wave: this.wave,
+      totalWaves: this.mapDef.mission.waveLimit,
+      phase: this.phase,
+      selectedKind: this.selectedKind,
+      selectedTower: t && stats
+        ? {
+            id: t.id,
+            kind: t.kind,
+            name: stats.name,
+            dmgLevel: t.dmgLevel,
+            rateLevel: t.rateLevel,
+            dmgCost: upgradeCost(t.dmgLevel),
+            rateCost: upgradeCost(t.rateLevel),
+            sellValue: Math.floor(t.spent * SELL_RATIO),
+            damage: Math.round(stats.damage),
+            fireRate: Number(stats.fireRate.toFixed(2)),
+            range: stats.range,
+            role: stats.role,
+          }
+        : null,
+      remainingInWave: this.remaining,
+      muted: this.muted,
+      assetsReady: Boolean(this.assets),
+      hoverCol: this.hoverCol,
+      hoverRow: this.hoverRow,
+      era: ERAS[this.eraIndex].id,
+      eraName: ERAS[this.eraIndex].name,
+      eraIndex: this.eraIndex,
+      eraCount: ERAS.length,
+      researchCost: researchCost(this.eraIndex),
+      researchReady: this.phase === "build" && this.wave > 0 && researchCost(this.eraIndex) != null && this.gold >= (researchCost(this.eraIndex) ?? Infinity),
+      researchedTech: Array.from(this.researchedTech),
+      availableTech: [...TECH_TREE, ...ERA_PROJECTS].filter((tech) => tech.eraIndex <= this.eraIndex && !this.researchedTech.has(tech.id)).map((tech) => tech.id),
+      selectedTech: null,
+      campaignMap: this.selectedMapId,
+      campaignMapName: this.mapDef.name,
+      campaignEraLabel: this.mapDef.eraLabel,
+      campaignXp: this.profile.xp,
+      campaignLevel: this.profile.level,
+      campaignShards: this.profile.shards,
+      campaignVictories: [...this.profile.victories],
+      campaignUpgrades: { ...this.profile.upgrades },
+      campaignRewardXp: this.campaignRewardXp,
+      campaignRewardShards: this.campaignRewardShards,
+      campaignRecords: structuredClone(this.profile.records),
+      campaignStats: { ...this.profile.stats },
+      missionTitle: this.mapDef.mission.title,
+      missionBriefing: this.mapDef.mission.briefing,
+      missionProgress: this.missionProgressValue(),
+      missionTarget: this.mapDef.mission.target,
+      missionProgressLabel: this.missionProgressLabel(),
+      missionFailedReason: this.missionFailedReason,
+      difficulty: this.settings.difficulty,
+      difficultyName: getDifficulty(this.settings.difficulty).name,
+      paused: this.paused,
+      gameSpeed: this.gameSpeed,
+      reducedEffects: this.settings.reducedEffects,
+      tutorialSeen: this.settings.tutorialSeen,
+      runStats: { ...this.runStats, elapsedSeconds: Math.floor(this.runStats.elapsedSeconds) },
+    };
+    this.onHud(hud);
+  }
+}
+
+function emptyRunStats(): RunStats {
+  return { kills: 0, bossKills: 0, towersBuilt: 0, towersSold: 0, goldEarned: 0, goldSpent: 0, livesLost: 0, leaks: 0, damageDealt: 0, shotsFired: 0, elapsedSeconds: 0, highestEra: 0 };
+}
+
+function bossAbilityCooldown(kind: EnemyKind) {
+  if (kind === "warden") return 8.5;
+  if (kind === "bronze_colossus") return 9.2;
+  if (kind === "iron_warlord") return 8.8;
+  if (kind === "industrial_dreadnought") return 8.2;
+  if (kind === "future_singularity") return 7.2;
+  return 999;
+}
+
+function emptyEnemy(): Enemy {
+  return {
+    alive: false,
+    id: 0,
+    kind: "ashling",
+    role: "infantry",
+    boss: false,
+    x: 0,
+    y: 0,
+    hp: 0,
+    maxHp: 1,
+    shield: 0,
+    maxShield: 0,
+    shieldRegen: 0,
+    shieldCooldown: 0,
+    speed: 0,
+    gold: 0,
+    armor: 0,
+    scale: 1,
+    leakDamage: 1,
+    wp: 0,
+    pathT: 0,
+    slow: 0,
+    flash: 0,
+    anim: 0,
+    facing: 0,
+    lane: 0,
+    era: 0,
+    regen: 0,
+    slowFactor: 1,
+    slowResist: 0,
+    resistBallista: 0,
+    resistMortar: 0,
+    resistSpire: 0,
+    burn: 0,
+    burnDps: 0,
+    abilityTimer: 999,
+    abilityFlash: 0,
+    speedBoost: 1,
+    speedBoostTimer: 0,
+    fortify: 0,
+    fortifyTimer: 0,
+  };
+}
+
+function emptyProj(): Projectile {
+  return {
+    alive: false,
+    kind: "ballista",
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    damage: 0,
+    splash: 0,
+    slow: 0,
+    targetId: 0,
+    ttl: 0,
+    destX: 0,
+    destY: 0,
+    homing: false,
+    pierce: 0,
+    techEra: 0,
+    branchId: null,
+    armorPierce: 0,
+    burnDps: 0,
+    slowFactor: 0.55,
+    chainMultiplier: 1,
+  };
+}
+
+function emptyPart(): Particle {
+  return { alive: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 1, size: 1, color: "#fff" };
+}
+
+function emptyFloat(): Floater {
+  return { alive: false, x: 0, y: 0, vy: 0, life: 0, text: "", color: "#fff" };
+}
+
+function bakeMap(assets: GameAssets, path: BuiltPath, keepCell: [number, number]) {
+  const c = document.createElement("canvas");
+  c.width = WORLD_W;
+  c.height = WORLD_H;
+  const ctx = c.getContext("2d");
+  if (!ctx) return c;
+  const pat = ctx.createPattern(assets.grass, "repeat");
+  if (pat) {
+    ctx.fillStyle = pat;
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+  }
+  ctx.fillStyle = "rgba(8,7,6,0.28)";
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+  const padPat = ctx.createPattern(assets.pad, "repeat");
+  if (padPat) {
+    ctx.globalAlpha = 0.22;
+    for (let r = 0; r < ROWS; r++) {
+      for (let col = 0; col < COLS; col++) {
+        const key = `${col},${r}`;
+        if (path.cells.has(key)) continue;
+        if (col === keepCell[0] && r === keepCell[1]) continue;
+        ctx.fillStyle = padPat;
+        ctx.fillRect(col * CELL + 4, r * CELL + 4, CELL - 8, CELL - 8);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const pathPat = ctx.createPattern(assets.path, "repeat");
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = pathPat ?? "#3a2c22";
+  ctx.lineWidth = CELL * 0.78;
+  ctx.beginPath();
+  path.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(20,14,10,0.28)";
+  ctx.lineWidth = CELL * 0.5;
+  ctx.stroke();
+
+  return c;
+}
