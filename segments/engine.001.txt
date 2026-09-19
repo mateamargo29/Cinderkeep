@@ -1,0 +1,340 @@
+import { loadAssets, type GameAssets } from "./assets";
+import * as audio from "./audio";
+import {
+  CELL,
+  COLS,
+  ENEMIES,
+  MAX_UPGRADE,
+  ROWS,
+  SELL_RATIO,
+  START_GOLD,
+  START_LIVES,
+  TOWERS,
+  WAVES,
+  resolveEnemyKind,
+  WORLD_H,
+  WORLD_W,
+  towerCombat,
+  upgradeCost,
+} from "./config";
+import { ERA_PROJECTS, ERAS, SPECIALIZATIONS, TECH_TREE, branchForKind, getTech, hasProjectEffect, researchCost, scaleEnemyValue } from "./evolution";
+import { CAMPAIGN_MAPS, META_UPGRADES, awardForMap, getCampaignMap, isMapUnlocked, levelFromXp, loadCampaignProfile, recordCampaignRun, saveCampaignProfile, upgradeCost as metaUpgradeCost, type CampaignProfile } from "./campaign";
+import { buildPath, cellCenter, inBounds, type BuiltPath } from "./map";
+import { getDifficulty, loadGameSettings, saveGameSettings } from "./settings";
+import { renderFrame, type View } from "./renderer";
+import type {
+  Enemy,
+  EnemyKind,
+  Floater,
+  HudState,
+  Particle,
+  Phase,
+  Projectile,
+  Tower,
+  TowerBranchId,
+  TowerKind,
+  MapId,
+  MetaUpgradeId,
+  DifficultyId,
+  GameSpeed,
+  RunStats,
+} from "./types";
+
+const STEP = 1 / 60;
+const ENEMY_CAP = 96;
+const PROJ_CAP = 80;
+const PART_CAP = 220;
+const FLOAT_CAP = 48;
+
+function pool<T>(n: number, make: () => T): T[] {
+  return Array.from({ length: n }, make);
+}
+
+export class Game {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  assets: GameAssets | null = null;
+  private onHud: (s: HudState) => void;
+  private raf = 0;
+  private acc = 0;
+  private last = 0;
+  private running = false;
+  private idSeq = 1;
+  private hitstop = 0;
+  private trauma = 0;
+  private time = 0;
+  private view: View = { scale: 1, ox: 0, oy: 0, cssW: 1, cssH: 1 };
+
+  gold = START_GOLD;
+  lives = START_LIVES;
+  wave = 0;
+  phase: Phase = "menu";
+  selectedKind: TowerKind | null = null;
+  selectedId: number | null = null;
+  hoverCol = -1;
+  hoverRow = -1;
+  muted = false;
+  settings = loadGameSettings();
+  paused = false;
+  gameSpeed: GameSpeed = 1;
+  runStats: RunStats = emptyRunStats();
+  remaining = 0;
+  eraIndex = 0;
+  researchedTech = new Set<string>();
+
+  profile: CampaignProfile = loadCampaignProfile();
+  selectedMapId: MapId = this.profile.selectedMap;
+  mapDef = getCampaignMap(this.selectedMapId);
+  path: BuiltPath = buildPath(this.mapDef.waypoints);
+  spawnCell: [number, number] = this.mapDef.waypoints[0];
+  keepCell: [number, number] = this.mapDef.waypoints[this.mapDef.waypoints.length - 1];
+  campaignRewardXp = 0;
+  campaignRewardShards = 0;
+  missionKills = 0;
+  missionBossKills = 0;
+  missionCharge = 0;
+  missionFailedReason: string | null = null;
+  private runRecorded = false;
+
+  towers: Tower[] = [];
+  occupied = new Set<string>();
+  enemies = pool(ENEMY_CAP, () => emptyEnemy());
+  projectiles = pool(PROJ_CAP, () => emptyProj());
+  particles = pool(PART_CAP, () => emptyPart());
+  floats = pool(FLOAT_CAP, () => emptyFloat());
+
+  private spawnQueue: Array<{ kind: EnemyKind; at: number; hpScale: number; goldScale: number }> = [];
+  private waveClock = 0;
+  private spawnedThisWave = 0;
+  private mapCanvas: HTMLCanvasElement | null = null;
+
+  constructor(canvas: HTMLCanvasElement, onHud: (s: HudState) => void) {
+    this.canvas = canvas;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D no disponible");
+    this.ctx = ctx;
+    this.onHud = onHud;
+    this.bind();
+  }
+
+  async init() {
+    this.assets = await loadAssets();
+    this.mapCanvas = bakeMap(this.assets, this.path, this.keepCell);
+    this.emit();
+  }
+
+  startLoop() {
+    if (this.running) return;
+    this.running = true;
+    this.last = performance.now();
+    const tick = (now: number) => {
+      if (!this.running) return;
+      if (
+        this.canvas.clientWidth !== this.view.cssW ||
+        this.canvas.clientHeight !== this.view.cssH
+      ) {
+        this.resize();
+      }
+      const dt = Math.min(0.1, (now - this.last) / 1000);
+      this.last = now;
+      if (!this.paused && (this.phase === "wave" || this.phase === "build")) this.runStats.elapsedSeconds += dt;
+      const simDt = this.paused ? 0 : dt * this.gameSpeed;
+      this.acc += simDt;
+      this.time += simDt;
+      while (this.acc >= STEP) {
+        if (this.hitstop > 0) this.hitstop -= STEP;
+        else this.simulate(STEP);
+        this.acc -= STEP;
+      }
+      this.trauma = Math.max(0, this.trauma - dt * 1.8);
+      audio.tickMusic(dt);
+      this.draw();
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
+  }
+
+  destroy() {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    this.canvas.removeEventListener("pointerdown", this.onPointerDown);
+    this.canvas.removeEventListener("pointermove", this.onPointerMove);
+    this.canvas.removeEventListener("pointerleave", this.onPointerLeave);
+    window.removeEventListener("resize", this.resize);
+    document.removeEventListener("visibilitychange", this.onVis);
+  }
+
+  private bind() {
+    this.canvas.addEventListener("pointerdown", this.onPointerDown);
+    this.canvas.addEventListener("pointermove", this.onPointerMove);
+    this.canvas.addEventListener("pointerleave", this.onPointerLeave);
+    window.addEventListener("resize", this.resize);
+    document.addEventListener("visibilitychange", this.onVis);
+    this.resize();
+  }
+
+  private onVis = () => {
+    if (document.visibilityState === "visible") audio.resumeIfNeeded();
+    else if (this.phase === "wave" && !this.paused) {
+      this.paused = true;
+      this.emit();
+    }
+  };
+
+  resize = () => {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cssW = this.canvas.clientWidth;
+    const cssH = this.canvas.clientHeight;
+    this.canvas.width = Math.max(1, Math.floor(cssW * dpr));
+    this.canvas.height = Math.max(1, Math.floor(cssH * dpr));
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const scale = Math.min(cssW / WORLD_W, cssH / WORLD_H);
+    const ox = (cssW - WORLD_W * scale) / 2;
+    const oy = (cssH - WORLD_H * scale) / 2;
+    this.view = { scale, ox, oy, cssW, cssH };
+  };
+
+  private screenToCell(ev: PointerEvent) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = (ev.clientX - rect.left - this.view.ox) / this.view.scale;
+    const y = (ev.clientY - rect.top - this.view.oy) / this.view.scale;
+    return { col: Math.floor(x / CELL), row: Math.floor(y / CELL), x, y };
+  }
+
+  private onPointerMove = (ev: PointerEvent) => {
+    const { col, row } = this.screenToCell(ev);
+    if (col !== this.hoverCol || row !== this.hoverRow) {
+      this.hoverCol = col;
+      this.hoverRow = row;
+      this.emit();
+    }
+  };
+
+  private onPointerLeave = () => {
+    this.hoverCol = -1;
+    this.hoverRow = -1;
+    this.emit();
+  };
+
+  private onPointerDown = (ev: PointerEvent) => {
+    if (this.phase === "menu" || this.phase === "victory" || this.phase === "defeat") return;
+    const { col, row } = this.screenToCell(ev);
+    if (!inBounds(col, row)) return;
+    const key = `${col},${row}`;
+    const existing = this.towers.find((t) => t.col === col && t.row === row);
+    if (existing) {
+      this.selectedId = existing.id;
+      this.selectedKind = null;
+      this.emit();
+      return;
+    }
+    if (this.selectedKind && this.canBuild(col, row)) {
+      this.place(col, row, this.selectedKind);
+      return;
+    }
+    if (!this.path.cells.has(key)) {
+      this.selectedId = null;
+      this.emit();
+    }
+  };
+
+  canBuild(col: number, row: number) {
+    if (!inBounds(col, row)) return false;
+    const key = `${col},${row}`;
+    if (this.path.cells.has(key)) return false;
+    if (this.occupied.has(key)) return false;
+    if (col === this.keepCell[0] && row === this.keepCell[1]) return false;
+    if (col === this.spawnCell[0] && row === this.spawnCell[1]) return false;
+    return true;
+  }
+
+  chooseKind(kind: TowerKind | null) {
+    if (this.phase === "victory" || this.phase === "defeat") return;
+    this.selectedKind = kind;
+    this.selectedId = null;
+    this.emit();
+  }
+
+  selectCampaignMap(id: MapId) {
+    const map = getCampaignMap(id);
+    if (!isMapUnlocked(this.profile, map)) return false;
+    this.selectedMapId = map.id;
+    this.profile.selectedMap = map.id;
+    saveCampaignProfile(this.profile);
+    this.applyCampaignMap(map.id);
+    this.emit();
+    return true;
+  }
+
+  startRun(id: MapId = this.selectedMapId) {
+    const map = getCampaignMap(id);
+    if (!isMapUnlocked(this.profile, map)) return false;
+    audio.unlockAudio();
+    this.applyCampaignMap(map.id);
+    this.resetRun();
+    this.paused = false;
+    this.gameSpeed = 1;
+    this.phase = "build";
+    this.emit();
+    return true;
+  }
+
+  returnToMenu() {
+    this.phase = "menu";
+    this.paused = false;
+    this.selectedKind = null;
+    this.selectedId = null;
+    this.emit();
+  }
+
+  buyMetaUpgrade(id: MetaUpgradeId) {
+    if (this.phase !== "menu" && this.phase !== "victory" && this.phase !== "defeat") return false;
+    const def = META_UPGRADES.find((item) => item.id === id);
+    if (!def) return false;
+    const level = this.profile.upgrades[id] ?? 0;
+    if (level >= def.maxLevel) return false;
+    const cost = metaUpgradeCost(level);
+    if (this.profile.shards < cost) return false;
+    this.profile.shards -= cost;
+    this.profile.upgrades[id] = level + 1;
+    saveCampaignProfile(this.profile);
+    audio.sfxUpgrade();
+    this.emit();
+    return true;
+  }
+
+  private applyCampaignMap(id: MapId) {
+    this.selectedMapId = id;
+    this.mapDef = getCampaignMap(id);
+    this.path = buildPath(this.mapDef.waypoints);
+    this.spawnCell = this.mapDef.waypoints[0];
+    this.keepCell = this.mapDef.waypoints[this.mapDef.waypoints.length - 1];
+    if (this.assets) this.mapCanvas = bakeMap(this.assets, this.path, this.keepCell);
+  }
+
+  private resetRun() {
+    const difficulty = getDifficulty(this.settings.difficulty);
+    this.gold = Math.max(40, START_GOLD + this.profile.upgrades.treasury * 12 + difficulty.startGoldBonus);
+    this.lives = Math.max(8, START_LIVES + this.profile.upgrades.bastion * 2 + difficulty.startLivesBonus);
+    this.runStats = emptyRunStats();
+    this.wave = 0;
+    this.selectedKind = null;
+    this.selectedId = null;
+    this.towers = [];
+    this.occupied.clear();
+    this.spawnQueue = [];
+    this.waveClock = 0;
+    this.spawnedThisWave = 0;
+    this.remaining = 0;
+    this.eraIndex = 0;
+    this.researchedTech.clear();
+    this.campaignRewardXp = 0;
+    this.campaignRewardShards = 0;
+    this.missionKills = 0;
+    this.missionBossKills = 0;
+    this.missionCharge = 0;
+    this.missionFailedReason = null;
+    this.runRecorded = false;
+    this.trauma = 0;
+    this.hitstop = 0;
+    for (const e of this.enemies) e.alive = false;
