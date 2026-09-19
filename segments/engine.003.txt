@@ -1,0 +1,360 @@
+    const spawn = this.path.points[0];
+    const lane = ((this.idSeq % 5) - 2) * 4;
+    slot.alive = true;
+    slot.id = this.idSeq++;
+    slot.kind = kind;
+    slot.role = def.role;
+    slot.boss = def.boss;
+    slot.era = def.era;
+    slot.x = spawn.x;
+    slot.y = spawn.y + lane;
+    slot.hp = scaleEnemyValue(def.hp, this.eraIndex) * hpScale * this.mapDef.enemyHpMultiplier * difficulty.enemyHp;
+    slot.maxHp = slot.hp;
+    slot.shield = slot.maxHp * def.shieldRatio;
+    slot.maxShield = slot.shield;
+    slot.shieldRegen = slot.maxHp * def.shieldRegenRate;
+    slot.shieldCooldown = 0;
+    slot.speed = def.speed * (1 + this.eraIndex * 0.08) * CELL * this.mapDef.enemySpeedMultiplier * difficulty.enemySpeed;
+    slot.gold = Math.round(def.gold * (1 + this.eraIndex * 0.08) * goldScale * this.mapDef.rewardMultiplier * difficulty.enemyGold);
+    slot.armor = Math.min(0.78, def.armor + this.eraIndex * 0.02);
+    slot.scale = def.scale * (1 + this.eraIndex * 0.025);
+    slot.leakDamage = def.leakDamage;
+    slot.wp = 1;
+    slot.pathT = 0;
+    slot.slow = 0;
+    slot.flash = 0;
+    slot.anim = Math.random();
+    slot.facing = 0;
+    slot.lane = lane;
+    slot.regen = slot.maxHp * def.regenRate;
+    slot.slowFactor = 1;
+    slot.slowResist = def.slowResist;
+    slot.resistBallista = def.resistBallista;
+    slot.resistMortar = def.resistMortar;
+    slot.resistSpire = def.resistSpire;
+    slot.burn = 0;
+    slot.burnDps = 0;
+    slot.abilityTimer = def.boss ? bossAbilityCooldown(kind) * 0.62 : 999;
+    slot.abilityFlash = 0;
+    slot.speedBoost = 1;
+    slot.speedBoostTimer = 0;
+    slot.fortify = 0;
+    slot.fortifyTimer = 0;
+    this.spawnedThisWave += 1;
+  }
+
+  private moveEnemies(dt: number) {
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      e.anim += dt * (e.role === "fast" ? 8 : 6);
+      e.flash = Math.max(0, e.flash - dt * 4);
+      e.abilityFlash = Math.max(0, e.abilityFlash - dt);
+      e.speedBoostTimer = Math.max(0, e.speedBoostTimer - dt);
+      if (e.speedBoostTimer <= 0) e.speedBoost = 1;
+      e.fortifyTimer = Math.max(0, e.fortifyTimer - dt);
+      if (e.fortifyTimer <= 0) e.fortify = 0;
+      if (e.boss) {
+        e.abilityTimer -= dt;
+        if (e.abilityTimer <= 0) this.triggerBossAbility(e);
+      }
+      e.slow = Math.max(0, e.slow - dt);
+      if (e.slow <= 0) e.slowFactor = 1;
+      if (e.burn > 0) {
+        e.burn = Math.max(0, e.burn - dt);
+        const burnResist = Math.min(0.6, e.resistMortar * 0.75);
+        const beforeHp = Math.max(0, e.hp);
+        e.hp -= e.burnDps * (1 - burnResist) * dt;
+        this.runStats.damageDealt += Math.max(0, beforeHp - Math.max(0, e.hp));
+        if (e.hp <= 0) {
+          this.kill(e);
+          continue;
+        }
+      } else {
+        e.burnDps = 0;
+      }
+      if (e.regen > 0 && e.hp > 0 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.regen * dt);
+      e.shieldCooldown = Math.max(0, e.shieldCooldown - dt);
+      if (e.shieldRegen > 0 && e.shieldCooldown <= 0 && e.shield < e.maxShield) e.shield = Math.min(e.maxShield, e.shield + e.shieldRegen * dt);
+      const speed = e.speed * (e.slow > 0 ? e.slowFactor : 1) * (e.speedBoostTimer > 0 ? e.speedBoost : 1);
+      const target = this.path.points[e.wp];
+      if (!target) {
+        this.leak(e);
+        continue;
+      }
+      const dx = target.x - e.x;
+      const dy = target.y + e.lane * 0.15 - e.y;
+      const dist = Math.hypot(dx, dy);
+      const step = speed * dt;
+      if (dist < 2 || step >= dist) {
+        e.x = target.x;
+        e.y = target.y + e.lane * 0.15;
+        e.wp += 1;
+        if (e.wp >= this.path.points.length) this.leak(e);
+      } else {
+        e.x += (dx / dist) * step;
+        e.y += (dy / dist) * step;
+        e.facing = Math.atan2(dy, dx);
+      }
+      const done = e.wp - 1;
+      e.pathT = Math.min(1, (done + (1 - dist / (CELL * 8))) / (this.path.points.length - 1));
+    }
+  }
+
+  private triggerBossAbility(boss: Enemy) {
+    boss.abilityTimer = bossAbilityCooldown(boss.kind);
+    boss.abilityFlash = 1.15;
+    const radius = boss.kind === "future_singularity" ? 215 : 185;
+    const nearby = this.enemies.filter((e) => {
+      if (!e.alive) return false;
+      const dx = e.x - boss.x;
+      const dy = e.y - boss.y;
+      return dx * dx + dy * dy <= radius * radius;
+    });
+
+    if (boss.kind === "warden") {
+      for (const e of nearby) { e.speedBoost = Math.max(e.speedBoost, 1.24); e.speedBoostTimer = Math.max(e.speedBoostTimer, 3.5); e.abilityFlash = Math.max(e.abilityFlash, 0.45); }
+      this.float(boss.x, boss.y - 34, "¡Rugido de ceniza!", "#d08a45");
+      this.burst(boss.x, boss.y, 18, "#c45c26");
+    } else if (boss.kind === "bronze_colossus") {
+      for (const e of nearby) { e.fortify = Math.max(e.fortify, 0.18); e.fortifyTimer = Math.max(e.fortifyTimer, 4.2); e.abilityFlash = Math.max(e.abilityFlash, 0.5); }
+      this.float(boss.x, boss.y - 34, "¡Muro de bronce!", "#d4a65b");
+      this.burst(boss.x, boss.y, 22, "#d4a65b");
+    } else if (boss.kind === "iron_warlord") {
+      for (const e of nearby) {
+        e.hp = Math.min(e.maxHp, e.hp + e.maxHp * (e.boss ? 0.06 : 0.12));
+        e.slow = 0; e.slowFactor = 1; e.burn = 0; e.burnDps = 0; e.abilityFlash = Math.max(e.abilityFlash, 0.55);
+      }
+      this.float(boss.x, boss.y - 34, "¡Estandarte de hierro!", "#b8bdc1");
+      this.burst(boss.x, boss.y, 22, "#a8afb5");
+    } else if (boss.kind === "industrial_dreadnought") {
+      for (const e of nearby) { e.fortify = Math.max(e.fortify, 0.27); e.fortifyTimer = Math.max(e.fortifyTimer, 4.8); e.abilityFlash = Math.max(e.abilityFlash, 0.55); }
+      boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.08);
+      this.float(boss.x, boss.y - 34, "¡Blindaje de emergencia!", "#c45c3d");
+      this.burst(boss.x, boss.y, 26, "#b94a3c");
+    } else if (boss.kind === "future_singularity") {
+      for (const e of nearby) {
+        if (e.maxShield > 0) e.shield = Math.min(e.maxShield, e.shield + e.maxShield * 0.45);
+        else { e.maxShield = e.maxHp * 0.1; e.shield = Math.max(e.shield, e.maxShield); }
+        e.speedBoost = Math.max(e.speedBoost, 1.18); e.speedBoostTimer = Math.max(e.speedBoostTimer, 2.8); e.abilityFlash = Math.max(e.abilityFlash, 0.65);
+      }
+      this.float(boss.x, boss.y - 36, "¡Pulso de singularidad!", "#86d6ef");
+      this.burst(boss.x, boss.y, 30, "#86d6ef");
+    }
+    audio.sfxUpgrade();
+    this.trauma = Math.min(1, this.trauma + 0.16);
+  }
+
+  private leak(e: Enemy) {
+    e.alive = false;
+    this.lives -= e.leakDamage;
+    this.runStats.leaks += 1;
+    this.runStats.livesLost += e.leakDamage;
+    this.remaining = Math.max(0, this.remaining - 1);
+    this.trauma = Math.min(1, this.trauma + 0.45);
+    audio.sfxLeak();
+    this.burst(e.x, e.y, 14, "#b54a3c");
+    if (this.mapDef.mission.kind === "reactor" && this.missionCharge > 0) {
+      const penalty = this.mapDef.mission.leakPenalty ?? 0;
+      this.missionCharge = Math.max(0, this.missionCharge - penalty);
+      this.float(e.x, e.y - 18, `-${penalty}% Nexo`, "#b54a3c");
+    }
+    if (this.lives <= 0) {
+      this.failMission("El bastión perdió todas sus vidas.");
+      return;
+    }
+    this.emit();
+  }
+
+  private tickTowers(dt: number) {
+    for (const t of this.towers) {
+      t.recoil = Math.max(0, t.recoil - dt * 4);
+      t.cooldown -= dt;
+      const stats = towerCombat(t.kind, t.dmgLevel, t.rateLevel, this.towerTechEra(t.kind), this.towerBranch(t.kind));
+      const target = this.acquire(t, stats.range);
+      if (target) t.angle = Math.atan2(target.y - t.y, target.x - t.x);
+      if (t.cooldown > 0 || !target) continue;
+      this.fire(t, target, stats);
+      t.cooldown = 1 / stats.fireRate;
+      t.recoil = 1;
+    }
+  }
+
+  private acquire(t: Tower, range: number) {
+    const r2 = range * range;
+    let best: Enemy | null = null;
+    let bestT = -1;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const dx = e.x - t.x;
+      const dy = e.y - t.y;
+      if (dx * dx + dy * dy > r2) continue;
+      if (e.pathT > bestT) {
+        bestT = e.pathT;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  private fire(
+    t: Tower,
+    target: Enemy,
+    stats: ReturnType<typeof towerCombat>,
+  ) {
+    const lead = t.kind === "mortar" ? 0.35 : 0.08;
+    for (let volley = 0; volley < stats.volley; volley++) {
+      const slot = this.projectiles.find((p) => !p.alive);
+      if (!slot) break;
+      const spread = stats.volley > 1 ? (volley === 0 ? -0.055 : 0.055) : 0;
+      const angle = Math.atan2(target.y - t.y, target.x - t.x) + spread;
+      const destX = target.x + Math.cos(target.facing) * target.speed * lead;
+      const destY = target.y + Math.sin(target.facing) * target.speed * lead;
+      const dx = destX - t.x;
+      const dy = destY - t.y;
+      const dist = Math.max(1, Math.hypot(dx, dy));
+      slot.alive = true;
+      slot.kind = t.kind;
+      slot.x = t.x;
+      slot.y = t.y;
+      slot.vx = Math.cos(angle) * stats.projectileSpeed;
+      slot.vy = Math.sin(angle) * stats.projectileSpeed;
+      slot.damage = stats.damage * (1 + this.profile.upgrades.arsenal * 0.04) * (hasProjectEffect(this.researchedTech, "quantum") ? 1.1 : 1);
+      slot.splash = stats.splash;
+      slot.slow = stats.slow;
+      slot.targetId = target.id;
+      slot.ttl = 1.8;
+      slot.destX = destX;
+      slot.destY = destY;
+      slot.homing = t.kind !== "mortar";
+      slot.pierce = stats.pierce;
+      slot.techEra = this.towerTechEra(t.kind);
+      slot.branchId = stats.branchId;
+      slot.armorPierce = stats.armorPierce;
+      slot.burnDps = stats.burnDps;
+      slot.slowFactor = stats.slowFactor;
+      slot.chainMultiplier = stats.chainMultiplier;
+      this.runStats.shotsFired += 1;
+    }
+    audio.sfxShoot(t.kind);
+  }
+
+  private moveProjectiles(dt: number) {
+    for (const p of this.projectiles) {
+      if (!p.alive) continue;
+      p.ttl -= dt;
+      if (p.ttl <= 0) {
+        p.alive = false;
+        continue;
+      }
+      if (p.homing) {
+        const tgt = this.enemies.find((e) => e.alive && e.id === p.targetId);
+        if (tgt) {
+          const dx = tgt.x - p.x;
+          const dy = tgt.y - p.y;
+          const dist = Math.max(1, Math.hypot(dx, dy));
+          const spd = Math.hypot(p.vx, p.vy);
+          p.vx = (dx / dist) * spd;
+          p.vy = (dy / dist) * spd;
+          p.destX = tgt.x;
+          p.destY = tgt.y;
+        }
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.kind === "mortar") {
+        const dx = p.destX - p.x;
+        const dy = p.destY - p.y;
+        if (dx * dx + dy * dy < 14 * 14 || p.ttl < 0.05) {
+          this.impact(p);
+        }
+      } else {
+        for (const e of this.enemies) {
+          if (!e.alive) continue;
+          const rad = 16 * e.scale;
+          const dx = e.x - p.x;
+          const dy = e.y - p.y;
+          if (dx * dx + dy * dy <= rad * rad) {
+            this.hitEnemy(e, p.damage, p.slow, p.kind, p.armorPierce, p.burnDps, p.slowFactor);
+            if (p.kind === "spire" && p.techEra >= 2 && p.branchId !== "spire:frost") this.chainHit(e, p);
+            if (p.kind === "spire" && p.techEra >= 4) this.pulseHit(e, p);
+            if (p.pierce > 0) {
+              p.pierce -= 1;
+              p.targetId = -1;
+              p.x += p.vx * 0.03;
+              break;
+            }
+            this.impact(p, e);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  private impact(p: Projectile, direct?: Enemy) {
+    p.alive = false;
+    this.burst(p.x, p.y, p.splash > 0 ? 18 : 8, p.kind === "spire" ? "#c45c26" : "#d8d2c8");
+    if (p.splash > 0) {
+      this.trauma = Math.min(1, this.trauma + 0.18);
+      const r2 = p.splash * p.splash;
+      for (const e of this.enemies) {
+        if (!e.alive) continue;
+        const dx = e.x - p.x;
+        const dy = e.y - p.y;
+        if (dx * dx + dy * dy <= r2) this.hitEnemy(e, p.damage, p.slow, p.kind, p.armorPierce, p.burnDps, p.slowFactor);
+      }
+    } else if (!direct) {
+      /* fly off */
+    }
+  }
+
+  private pulseHit(source: Enemy, p: Projectile) {
+    const radius = 72;
+    for (const e of this.enemies) {
+      if (!e.alive || e.id === source.id) continue;
+      const dx = e.x - source.x;
+      const dy = e.y - source.y;
+      if (dx * dx + dy * dy <= radius * radius) this.hitEnemy(e, p.damage * 0.28, p.slow * 0.6, p.kind, p.armorPierce * 0.5, p.burnDps * 0.35, p.slowFactor);
+    }
+    this.burst(source.x, source.y, 9, "#d8d2c8");
+  }
+
+  private chainHit(source: Enemy, p: Projectile) {
+    let best: Enemy | null = null;
+    let bestD = 105 * 105;
+    for (const e of this.enemies) {
+      if (!e.alive || e.id === source.id) continue;
+      const dx = e.x - source.x;
+      const dy = e.y - source.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    if (best) {
+      this.hitEnemy(best, p.damage * (p.techEra >= 4 ? 0.72 : 0.45) * p.chainMultiplier, p.slow, p.kind, p.armorPierce, 0, p.slowFactor);
+      this.burst(best.x, best.y, 5, "#c4b08a");
+    }
+  }
+
+  private hitEnemy(
+    e: Enemy,
+    damage: number,
+    slow: number,
+    source: TowerKind,
+    armorPierce = 0,
+    burnDps = 0,
+    slowFactor = 0.55,
+  ) {
+    const resistance = source === "ballista" ? e.resistBallista : source === "mortar" ? e.resistMortar : e.resistSpire;
+    const effectiveArmor = Math.max(0, e.armor - armorPierce);
+    const dealt = damage * (1 - effectiveArmor) * (1 - resistance) * (1 - e.fortify);
+    const beforeDurability = Math.max(0, e.hp) + Math.max(0, e.shield);
+    let remainingDamage = dealt;
+    if (e.shield > 0) {
+      const absorbed = Math.min(e.shield, remainingDamage);
+      e.shield -= absorbed;
+      remainingDamage -= absorbed;
+      e.shieldCooldown = 2.5;
+    }

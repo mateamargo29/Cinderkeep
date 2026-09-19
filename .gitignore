@@ -1,0 +1,5 @@
+node_modules/
+dist-mobile/
+android/
+release/
+.DS_Store
