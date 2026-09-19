@@ -1,0 +1,360 @@
+    for (const p of this.projectiles) p.alive = false;
+    for (const p of this.particles) p.alive = false;
+    for (const f of this.floats) f.alive = false;
+  }
+
+  launchWave() {
+    if (this.phase !== "build") return;
+    if (this.wave >= this.mapDef.mission.waveLimit) return;
+    const def = WAVES[this.wave];
+    this.waveClock = 0;
+    this.spawnQueue = [];
+    let total = 0;
+    for (const g of def.groups) {
+      for (let i = 0; i < g.count; i++) {
+        this.spawnQueue.push({ kind: resolveEnemyKind(g.kind, this.eraIndex), at: g.delay + i * g.interval, hpScale: g.hpScale ?? 1, goldScale: g.goldScale ?? 1 });
+        total++;
+      }
+    }
+    this.spawnQueue.sort((a, b) => a.at - b.at);
+    this.remaining = total;
+    this.spawnedThisWave = 0;
+    this.phase = "wave";
+    this.wave += 1;
+    audio.sfxWave();
+    this.emit();
+  }
+
+  researchEra() {
+    if (this.phase !== "build" || this.wave <= 0) return false;
+    const cost = researchCost(this.eraIndex);
+    if (cost == null || this.gold < cost) return false;
+    this.gold -= cost;
+    this.runStats.goldSpent += cost;
+    this.eraIndex += 1;
+    this.runStats.highestEra = Math.max(this.runStats.highestEra, this.eraIndex);
+    audio.sfxUpgrade();
+    this.burst(WORLD_W * 0.5, WORLD_H * 0.5, 28, "#c4b08a");
+    this.emit();
+    return true;
+  }
+
+  researchTech(id: string) {
+    if (this.phase !== "build") return false;
+    const tech = TECH_TREE.find((t) => t.id === id);
+    if (!tech || tech.eraIndex > this.eraIndex || this.researchedTech.has(id)) return false;
+    if (tech.eraIndex > 1 && !this.researchedTech.has(getTech(tech.eraIndex - 1, tech.kind)?.id ?? "")) return false;
+    if (tech.eraIndex >= 3 && !this.towerBranch(tech.kind)) return false;
+    if (this.gold < tech.cost) return false;
+    this.gold -= tech.cost;
+    this.runStats.goldSpent += tech.cost;
+    this.researchedTech.add(id);
+    audio.sfxUpgrade();
+    const p = cellCenter(Math.max(0, Math.min(COLS - 1, 6)), Math.max(0, Math.min(ROWS - 1, 4)));
+    this.burst(p.x, p.y, 18, "#c4b08a");
+    this.emit();
+    return true;
+  }
+
+  towerTechEra(kind: TowerKind) {
+    let era = 0;
+    for (const tech of TECH_TREE) {
+      if (tech.kind === kind && this.researchedTech.has(tech.id)) era = Math.max(era, tech.eraIndex);
+    }
+    return era;
+  }
+
+  towerBranch(kind: TowerKind): TowerBranchId | null {
+    return branchForKind(this.researchedTech, kind);
+  }
+
+  researchBranch(id: string) {
+    if (this.phase !== "build") return false;
+    const branch = SPECIALIZATIONS.find((item) => item.id === id);
+    if (!branch || this.eraIndex < branch.eraIndex || this.researchedTech.has(branch.id)) return false;
+    const prerequisite = getTech(branch.eraIndex, branch.kind);
+    if (!prerequisite || !this.researchedTech.has(prerequisite.id)) return false;
+    if (this.towerBranch(branch.kind)) return false;
+    if (this.gold < branch.cost) return false;
+    this.gold -= branch.cost;
+    this.runStats.goldSpent += branch.cost;
+    this.researchedTech.add(branch.id);
+    audio.sfxUpgrade();
+    const p = cellCenter(Math.max(0, Math.min(COLS - 1, 6)), Math.max(0, Math.min(ROWS - 1, 4)));
+    this.burst(p.x, p.y, 24, branch.kind === "spire" ? "#a9d8e8" : branch.id === "mortar:incendiary" ? "#d96a2f" : "#c4b08a");
+    this.emit();
+    return true;
+  }
+
+
+  researchProject(id: string) {
+    if (this.phase !== "build") return false;
+    const project = ERA_PROJECTS.find((item) => item.id === id);
+    if (!project || project.eraIndex > this.eraIndex || this.researchedTech.has(project.id)) return false;
+    if (this.gold < project.cost) return false;
+    this.gold -= project.cost;
+    this.runStats.goldSpent += project.cost;
+    this.researchedTech.add(project.id);
+    if (project.effect === "ramparts") this.lives += 4;
+    audio.sfxUpgrade();
+    const p = cellCenter(Math.max(0, Math.min(COLS - 1, 6)), Math.max(0, Math.min(ROWS - 1, 4)));
+    this.burst(p.x, p.y, 26, project.effect === "quantum" ? "#a9d8e8" : "#c4b08a");
+    this.emit();
+    return true;
+  }
+
+  upgradeDamage() {
+    const t = this.selectedTower();
+    if (!t || t.dmgLevel >= MAX_UPGRADE) return;
+    const cost = upgradeCost(t.dmgLevel);
+    if (cost == null || this.gold < cost) return;
+    this.gold -= cost;
+    this.runStats.goldSpent += cost;
+    t.dmgLevel += 1;
+    t.spent += cost;
+    audio.sfxUpgrade();
+    this.emit();
+  }
+
+  upgradeRate() {
+    const t = this.selectedTower();
+    if (!t || t.rateLevel >= MAX_UPGRADE) return;
+    const cost = upgradeCost(t.rateLevel);
+    if (cost == null || this.gold < cost) return;
+    this.gold -= cost;
+    this.runStats.goldSpent += cost;
+    t.rateLevel += 1;
+    t.spent += cost;
+    audio.sfxUpgrade();
+    this.emit();
+  }
+
+  sell() {
+    const t = this.selectedTower();
+    if (!t) return;
+    this.gold += Math.floor(t.spent * SELL_RATIO);
+    this.runStats.towersSold += 1;
+    this.occupied.delete(`${t.col},${t.row}`);
+    this.towers = this.towers.filter((x) => x.id !== t.id);
+    this.selectedId = null;
+    audio.sfxPlace();
+    this.emit();
+  }
+
+  private completeCampaignVictory() {
+    if (this.campaignRewardXp > 0 || this.campaignRewardShards > 0) return;
+    const reward = awardForMap(this.mapDef, this.lives);
+    const difficulty = getDifficulty(this.settings.difficulty);
+    this.campaignRewardXp = Math.max(1, Math.round(reward.xp * difficulty.rewardMultiplier));
+    this.campaignRewardShards = Math.max(1, Math.round(reward.shards * difficulty.rewardMultiplier));
+    this.profile.xp += this.campaignRewardXp;
+    this.profile.level = levelFromXp(this.profile.xp);
+    this.profile.shards += this.campaignRewardShards;
+    if (!this.profile.victories.includes(this.selectedMapId)) this.profile.victories.push(this.selectedMapId);
+    saveCampaignProfile(this.profile);
+  }
+
+  setDifficulty(id: DifficultyId) {
+    if (this.phase === "build" || this.phase === "wave") return false;
+    this.settings.difficulty = id;
+    saveGameSettings(this.settings);
+    this.emit();
+    return true;
+  }
+
+  toggleReducedEffects() {
+    this.settings.reducedEffects = !this.settings.reducedEffects;
+    saveGameSettings(this.settings);
+    this.emit();
+  }
+
+  markTutorialSeen(seen = true) {
+    this.settings.tutorialSeen = seen;
+    saveGameSettings(this.settings);
+    this.emit();
+  }
+
+  togglePause() {
+    if (this.phase !== "wave" && this.phase !== "build") return;
+    this.paused = !this.paused;
+    this.acc = 0;
+    this.emit();
+  }
+
+  setGameSpeed(speed: GameSpeed) {
+    if (speed !== 1 && speed !== 2 && speed !== 3) return;
+    this.gameSpeed = speed;
+    this.emit();
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    audio.setMuted(this.muted);
+    this.emit();
+  }
+
+  private selectedTower() {
+    return this.towers.find((t) => t.id === this.selectedId) ?? null;
+  }
+
+  private place(col: number, row: number, kind: TowerKind) {
+    const def = TOWERS[kind];
+    if (this.gold < def.cost) return;
+    const c = cellCenter(col, row);
+    this.gold -= def.cost;
+    this.runStats.goldSpent += def.cost;
+    this.runStats.towersBuilt += 1;
+    const t: Tower = {
+      id: this.idSeq++,
+      kind,
+      col,
+      row,
+      x: c.x,
+      y: c.y,
+      dmgLevel: 0,
+      rateLevel: 0,
+      spent: def.cost,
+      cooldown: 0.15,
+      angle: 0,
+      recoil: 0,
+    };
+    this.towers.push(t);
+    this.occupied.add(`${col},${row}`);
+    this.selectedId = t.id;
+    this.selectedKind = null;
+    audio.sfxPlace();
+    this.burst(c.x, c.y, 8, "#c4b08a");
+    this.emit();
+  }
+
+  private simulate(dt: number) {
+    if (this.phase !== "wave" && this.phase !== "build") {
+      this.ageFx(dt);
+      return;
+    }
+
+    if (this.phase === "wave" && this.mapDef.mission.kind === "reactor") {
+      const before = Math.floor(this.missionCharge);
+      this.missionCharge = Math.min(this.mapDef.mission.target, this.missionCharge + (this.mapDef.mission.reactorRate ?? 0) * dt);
+      if (this.missionCharge >= this.mapDef.mission.target) {
+        this.finishVictory();
+        this.ageFx(dt);
+        return;
+      }
+      if (Math.floor(this.missionCharge) !== before) this.emit();
+    }
+
+    if (this.phase === "wave") this.advanceWave(dt);
+    this.moveEnemies(dt);
+    this.tickTowers(dt);
+    this.moveProjectiles(dt);
+    this.ageFx(dt);
+  }
+
+  private advanceWave(dt: number) {
+    this.waveClock += dt;
+    while (this.spawnQueue.length && this.spawnQueue[0].at <= this.waveClock) {
+      const next = this.spawnQueue.shift();
+      if (next) this.spawnEnemy(next.kind, next.hpScale, next.goldScale);
+    }
+    const live = this.enemies.some((e) => e.alive);
+    if (!live && this.spawnQueue.length === 0 && this.spawnedThisWave > 0) {
+      if (this.missionCompleteAtWaveEnd()) {
+        this.finishVictory();
+      } else if (this.wave >= this.mapDef.mission.waveLimit) {
+        this.failMission(this.missionFailureText());
+      } else {
+        this.phase = "build";
+        const waveIncome = 12 + this.wave * 2 + (hasProjectEffect(this.researchedTech, "supply") ? 12 : 0);
+        this.gold += waveIncome;
+        this.runStats.goldEarned += waveIncome;
+        this.emit();
+      }
+    }
+  }
+
+  private missionCompleteAtWaveEnd() {
+    const mission = this.mapDef.mission;
+    if (mission.kind === "survive") return this.wave >= mission.target;
+    if (mission.kind === "integrity") return this.wave >= mission.target && this.lives >= (mission.minLives ?? 1);
+    if (mission.kind === "boss_hunt") return this.missionBossKills >= mission.target;
+    if (mission.kind === "elimination") return this.missionKills >= mission.target;
+    if (mission.kind === "reactor") return this.missionCharge >= mission.target;
+    return false;
+  }
+
+  private checkImmediateMissionVictory() {
+    const mission = this.mapDef.mission;
+    if (mission.kind === "boss_hunt" && this.missionBossKills >= mission.target) {
+      this.finishVictory();
+      return true;
+    }
+    if (mission.kind === "elimination" && this.missionKills >= mission.target) {
+      this.finishVictory();
+      return true;
+    }
+    return false;
+  }
+
+  private finishVictory() {
+    if (this.phase === "victory") return;
+    this.phase = "victory";
+    this.missionFailedReason = null;
+    this.spawnQueue = [];
+    this.remaining = 0;
+    for (const enemy of this.enemies) enemy.alive = false;
+    this.completeCampaignVictory();
+    this.recordRun(true);
+    audio.sfxWin();
+    this.emit();
+  }
+
+  private failMission(reason: string) {
+    if (this.phase === "defeat") return;
+    this.phase = "defeat";
+    this.missionFailedReason = reason;
+    this.spawnQueue = [];
+    this.remaining = 0;
+    this.recordRun(false);
+    audio.sfxLose();
+    this.emit();
+  }
+
+  private recordRun(victory: boolean) {
+    if (this.runRecorded) return;
+    this.runRecorded = true;
+    recordCampaignRun(this.profile, this.selectedMapId, this.settings.difficulty, this.lives, this.runStats, victory);
+    saveCampaignProfile(this.profile);
+  }
+
+  private missionFailureText() {
+    const mission = this.mapDef.mission;
+    if (mission.kind === "integrity") return `La décima oleada terminó con ${this.lives} vidas; se requerían ${mission.minLives ?? 10}.`;
+    if (mission.kind === "boss_hunt") return `Solo cayeron ${this.missionBossKills} de ${mission.target} comandantes.`;
+    if (mission.kind === "elimination") return `La ofensiva terminó con ${this.missionKills} de ${mission.target} bajas necesarias.`;
+    if (mission.kind === "reactor") return `El Nexo alcanzó ${Math.floor(this.missionCharge)}% de carga antes de agotarse las oleadas.`;
+    return "La condición principal de la misión no se completó.";
+  }
+
+  private missionProgressValue() {
+    const mission = this.mapDef.mission;
+    if (mission.kind === "survive" || mission.kind === "integrity") return Math.min(this.wave, mission.target);
+    if (mission.kind === "boss_hunt") return Math.min(this.missionBossKills, mission.target);
+    if (mission.kind === "elimination") return Math.min(this.missionKills, mission.target);
+    return Math.min(this.missionCharge, mission.target);
+  }
+
+  private missionProgressLabel() {
+    const mission = this.mapDef.mission;
+    if (mission.kind === "survive") return `${Math.min(this.wave, mission.target)}/${mission.target} oleadas`;
+    if (mission.kind === "integrity") return `${Math.min(this.wave, mission.target)}/${mission.target} oleadas · ${this.lives}/${mission.minLives ?? 10} vidas mínimas`;
+    if (mission.kind === "boss_hunt") return `${Math.min(this.missionBossKills, mission.target)}/${mission.target} comandantes`;
+    if (mission.kind === "elimination") return `${Math.min(this.missionKills, mission.target)}/${mission.target} bajas`;
+    return `${Math.floor(Math.min(this.missionCharge, mission.target))}% / ${mission.target}% de carga`;
+  }
+
+  private spawnEnemy(kind: EnemyKind, hpScale = 1, goldScale = 1) {
+    const slot = this.enemies.find((e) => !e.alive);
+    if (!slot) return;
+    const def = ENEMIES[kind];
+    const difficulty = getDifficulty(this.settings.difficulty);
