@@ -39,14 +39,36 @@ export function Cinderkeep() {
   const [screen, setScreen] = useState<"home" | "campaign" | "settings">("home");
   const [techOpen, setTechOpen] = useState(false);
   const [tutorial, setTutorial] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      setBootError("No se pudo crear el lienzo del juego.");
+      return;
+    }
+
+    let disposed = false;
     const game = new Game(canvas, setHud);
     gameRef.current = game;
-    void game.init().then(() => game.startLoop());
-    return () => game.destroy();
+
+    void game.init()
+      .then(() => {
+        if (disposed) return;
+        setBootError(null);
+        game.resize();
+        game.startLoop();
+      })
+      .catch((error: unknown) => {
+        if (disposed) return;
+        const message = error instanceof Error ? error.message : String(error);
+        setBootError(message || "Error desconocido durante el inicio.");
+      });
+
+    return () => {
+      disposed = true;
+      game.destroy();
+    };
   }, []);
 
   const g = () => gameRef.current;
@@ -54,8 +76,8 @@ export function Cinderkeep() {
   const leaveBattle = () => { g()?.returnToMenu(); setScreen("campaign"); setTechOpen(false); };
 
   return (
-    <main className="relative flex h-dvh min-h-0 flex-col overflow-hidden bg-bg text-fg">
-      <header className="z-10 flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface/95 px-3 py-2 pt-[max(.5rem,env(safe-area-inset-top))]">
+    <main className="app-shell">
+      <header className="app-header z-10 flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface/95 px-3 pb-2">
         <div className="min-w-0">
           <h1 className="font-display text-lg font-bold">Cinderkeep</h1>
           <p className="truncate text-[11px] text-muted">
@@ -68,8 +90,23 @@ export function Cinderkeep() {
         </div>
       </header>
 
-      <div className="relative min-h-0 flex-1 bg-bg">
-        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none" style={{ touchAction: "none" }} />
+      <div className="game-stage">
+        <canvas
+          ref={canvasRef}
+          className={`absolute inset-0 h-full w-full touch-none ${playing ? "block" : "hidden"}`}
+          style={{ touchAction: "none", background: "#0c0b0a" }}
+        />
+
+        {bootError && (
+          <div className="absolute inset-0 z-[70] flex items-center justify-center bg-bg p-5">
+            <div className="w-full max-w-md rounded-xl border border-danger/60 bg-surface p-5 text-center">
+              <h2 className="font-display text-xl font-bold">Cinderkeep no pudo iniciar</h2>
+              <p className="mt-2 text-sm text-muted">La app está instalada correctamente, pero el motor encontró un error al preparar el juego.</p>
+              <code className="mt-4 block max-h-32 overflow-auto rounded-lg bg-bg p-3 text-left text-[11px] text-danger">{bootError}</code>
+              <button className="btn-primary mt-4 w-full" onClick={() => window.location.reload()}>Reintentar inicio</button>
+            </div>
+          </div>
+        )}
 
         {hud.phase === "menu" && screen === "home" && (
           <Panel>
@@ -308,7 +345,11 @@ export function Cinderkeep() {
 }
 
 function Panel({ children, scroll = false, layer = false }: { children: React.ReactNode; scroll?: boolean; layer?: boolean }) {
-  return <div className={`absolute inset-0 ${layer ? "z-50" : "z-20"} flex items-center justify-center bg-bg/94 p-4 ${scroll ? "overflow-y-auto" : ""}`}>{children}</div>;
+  if (!layer) {
+    return <div className={`menu-surface flex items-center justify-center p-4 ${scroll ? "overflow-y-auto" : ""}`}>{children}</div>;
+  }
+
+  return <div className={`absolute inset-0 z-50 flex items-center justify-center bg-bg p-4 ${scroll ? "overflow-y-auto" : ""}`}>{children}</div>;
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
