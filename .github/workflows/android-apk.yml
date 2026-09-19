@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - release/v3.0.1
+      - fix/v3.0.2-android-ui
 
 permissions:
   contents: read
@@ -55,10 +55,10 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.0.1-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.0.2-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Cinderkeep-v3.0.1-debug-apk
-          path: release/Cinderkeep-v3.0.1-debug.apk
+          name: Cinderkeep-v3.0.2-debug-apk
+          path: release/Cinderkeep-v3.0.2-debug.apk
           retention-days: 30
