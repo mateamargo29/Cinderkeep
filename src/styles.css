@@ -16,39 +16,64 @@
   --color-ok: #6f8f6a;
   --font-display: "Cinzel", ui-serif, Georgia, serif;
   --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
-  --shadow-panel: 0 12px 40px rgb(0 0 0 / 0.45);
 }
 
 @layer base {
-  html,
-  body,
-  #app,
-  #root {
+  html, body, #app, #root {
     min-height: 100dvh;
     background: var(--color-bg);
     color: var(--color-fg);
     font-family: var(--font-sans);
   }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
 
-  button:not(:disabled),
-  [role="button"]:not(:disabled) {
-    cursor: pointer;
+@layer components {
+  .btn-primary {
+    min-height: 3rem;
+    border-radius: .65rem;
+    background: var(--color-accent);
+    color: var(--color-accent-fg);
+    padding: .7rem 1rem;
+    font-family: var(--font-display);
+    font-weight: 700;
   }
-
-  button:disabled {
-    cursor: not-allowed;
+  .btn-secondary {
+    min-height: 2.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: .65rem;
+    background: var(--color-surface-2);
+    color: var(--color-fg);
+    padding: .6rem .9rem;
+    font-size: .8rem;
+    font-weight: 600;
+  }
+  .btn-square {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: .55rem;
+    background: var(--color-surface-2);
+  }
+  .chip, .chip-active {
+    min-height: 2.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: .55rem;
+    background: var(--color-bg);
+    padding: .4rem .65rem;
+    font-size: .72rem;
+    white-space: nowrap;
+  }
+  .chip-active {
+    border-color: var(--color-brass);
+    background: var(--color-surface-2);
+    color: var(--color-brass);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -62,10 +87,5 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-button, canvas {
-  -webkit-touch-callout: none;
-}
-
-@media (max-width: 640px) {
-  body { overflow: hidden; }
-}
+button, canvas { -webkit-touch-callout: none; }
+@media (max-width: 640px) { body { overflow: hidden; } }
