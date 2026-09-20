@@ -34,7 +34,7 @@ export const CAMPAIGN_MAPS: CampaignMapDef[] = [
     chapter: "Capítulo I",
     era: "ash",
     eraLabel: "Piedra",
-    description: "El primer territorio del bastión. Piedra, madera y fuego son todo lo que existe antes de descubrir la metalurgia."
+    description: "El primer territorio del bastión. Piedra, madera y fuego son todo lo que existe antes de descubrir la metalurgia.",
     waypoints: [[0,1],[10,1],[10,3],[2,3],[2,5],[11,5],[11,7],[13,7]],
     enemyHpMultiplier: 1,
     enemySpeedMultiplier: 1,
@@ -44,7 +44,7 @@ export const CAMPAIGN_MAPS: CampaignMapDef[] = [
       kind: "survive",
       title: "Primera Guardia",
       summary: "Resiste 8 oleadas y conserva el bastión.",
-      briefing: "Levanta una defensa primitiva con piedra, madera y sílex. Sobrevive ocho oleadas y alcanza la Edad del Bronce."
+      briefing: "Levanta una defensa primitiva con piedra, madera y sílex. Sobrevive ocho oleadas y alcanza la Edad del Bronce.",
       waveLimit: 8,
       target: 8,
     },
