@@ -24,7 +24,7 @@ export type EraDef = {
 };
 
 export const ERAS: EraDef[] = [
-  { id: "ash", name: "Era de Ceniza", shortName: "Ceniza", description: "Tecnología defensiva básica.", towerMultiplier: 1, enemyMultiplier: 1, researchBase: 120, unlocksTowers: ["ballista", "mortar", "spire"], unlocksEnemies: ["ashling", "streaker", "carapace", "warden"] },
+  { id: "ash", name: "Edad de Piedra", shortName: "Piedra", description: "Madera, sílex, hueso y fuerza primitiva sostienen la primera defensa.", towerMultiplier: 1, enemyMultiplier: 1, researchBase: 120, unlocksTowers: ["ballista", "mortar", "spire"], unlocksEnemies: ["ashling", "streaker", "carapace", "warden"] },
   { id: "bronze", name: "Era del Bronce", shortName: "Bronce", description: "Metalurgia: aparecen ejércitos de bronce y nuevas defensas.", towerMultiplier: 1.12, enemyMultiplier: 1.16, researchBase: 190, unlocksTowers: [], unlocksEnemies: ["bronze_raider", "bronze_scout", "bronze_hoplite", "bronze_colossus"] },
   { id: "iron", name: "Era del Hierro", shortName: "Hierro", description: "Ingeniería militar, formaciones pesadas y regeneración enemiga.", towerMultiplier: 1.28, enemyMultiplier: 1.36, researchBase: 280, unlocksTowers: [], unlocksEnemies: ["iron_legionary", "iron_outrider", "iron_bulwark", "iron_warlord"] },
   { id: "industrial", name: "Era Industrial", shortName: "Industrial", description: "Máquinas, blindados y autorreparación cambian el frente.", towerMultiplier: 1.5, enemyMultiplier: 1.65, researchBase: 400, unlocksTowers: [], unlocksEnemies: ["industrial_trooper", "industrial_bike", "industrial_tank", "industrial_dreadnought"] },
@@ -42,7 +42,7 @@ export type WorldTheme = {
 };
 
 export const WORLD_THEMES: WorldTheme[] = [
-  { name: "Yermo de Ceniza", subtitle: "Brasas, roca oscura y ruinas antiguas.", tint: "rgba(54,34,27,0.18)", pathGlow: "rgba(196,92,38,0.16)", keepAccent: "#c45c26", riftColor: "#c45c26", ambient: "embers" },
+  { name: "Valle de Piedra", subtitle: "Tierra cruda, menhires, fogatas y empalizadas.", tint: "rgba(88,70,48,0.24)", pathGlow: "rgba(165,135,91,0.28)", keepAccent: "#b99a69", riftColor: "#d37a38", ambient: "embers" },
   { name: "Frontera de Bronce", subtitle: "Piedra solar, estandartes y metal bruñido.", tint: "rgba(128,79,32,0.34)", pathGlow: "rgba(232,177,82,0.72)", keepAccent: "#e0ad58", riftColor: "#d88832", ambient: "dust" },
   { name: "Bastión de Hierro", subtitle: "Fortificaciones, placas, remaches y hornos de guerra.", tint: "rgba(62,69,76,0.36)", pathGlow: "rgba(184,194,203,0.68)", keepAccent: "#bdc6cd", riftColor: "#c17548", ambient: "sparks" },
   { name: "Distrito Industrial", subtitle: "Acero, humo, tuberías y maquinaria de guerra.", tint: "rgba(32,39,44,0.42)", pathGlow: "rgba(210,78,56,0.64)", keepAccent: "#cf563f", riftColor: "#e06545", ambient: "smoke" },
@@ -133,21 +133,21 @@ export type TowerEraForm = {
 
 const TOWER_FORMS: Record<TowerKind, TowerEraForm[]> = {
   ballista: [
-    { name: "Balista", role: "Arma de asedio", description: "Virote preciso de la Era de Ceniza.", damageMultiplier: 1, fireRateMultiplier: 1, rangeMultiplier: 1, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1, pierce: 0, volley: 1, chain: false, pulse: false },
+    { name: "Lanzavirotes de Sílex", role: "Arma primitiva", description: "Madera, tendón y punta de sílex para perforar a distancia.", damageMultiplier: 1, fireRateMultiplier: 1, rangeMultiplier: 1, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1, pierce: 0, volley: 1, chain: false, pulse: false },
     { name: "Arbalesta de Bronce", role: "Perforadora", description: "Puntas metálicas que atraviesan una unidad.", damageMultiplier: 1.08, fireRateMultiplier: 1.02, rangeMultiplier: 1.03, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1.12, pierce: 1, volley: 1, chain: false, pulse: false },
     { name: "Balista de Hierro", role: "Repetidora", description: "Mecanismo reforzado con ráfagas de dos virotes.", damageMultiplier: 1.16, fireRateMultiplier: 1.06, rangeMultiplier: 1.06, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1.18, pierce: 1, volley: 2, chain: false, pulse: false },
     { name: "Cañón de Repetición", role: "Artillería móvil", description: "Proyectiles perforantes de alta velocidad.", damageMultiplier: 1.28, fireRateMultiplier: 1.1, rangeMultiplier: 1.12, splashMultiplier: 1.1, slowBonus: 0, projectileSpeedMultiplier: 1.32, pierce: 2, volley: 2, chain: false, pulse: false },
     { name: "Rayo Perforante", role: "Arma energética", description: "Un haz concentrado que atraviesa múltiples enemigos.", damageMultiplier: 1.5, fireRateMultiplier: 1.16, rangeMultiplier: 1.2, splashMultiplier: 1.18, slowBonus: 0.04, projectileSpeedMultiplier: 1.7, pierce: 4, volley: 2, chain: false, pulse: false },
   ],
   mortar: [
-    { name: "Mortero", role: "Artillería", description: "Explosión lenta y poderosa.", damageMultiplier: 1, fireRateMultiplier: 1, rangeMultiplier: 1, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1, pierce: 0, volley: 1, chain: false, pulse: false },
+    { name: "Lanzapiedras", role: "Artillería primitiva", description: "Un brazo de madera arroja rocas pesadas sobre grupos enemigos.", damageMultiplier: 1, fireRateMultiplier: 1, rangeMultiplier: 1, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1, pierce: 0, volley: 1, chain: false, pulse: false },
     { name: "Mortero de Bronce", role: "Incendiario", description: "Cargas calientes con mayor radio de explosión.", damageMultiplier: 1.1, fireRateMultiplier: 1.01, rangeMultiplier: 1.04, splashMultiplier: 1.22, slowBonus: 0.04, projectileSpeedMultiplier: 1.05, pierce: 0, volley: 1, chain: false, pulse: false },
     { name: "Obús de Hierro", role: "Demolición", description: "Mayor alcance y explosiones capaces de castigar grupos.", damageMultiplier: 1.22, fireRateMultiplier: 1.04, rangeMultiplier: 1.1, splashMultiplier: 1.38, slowBonus: 0.07, projectileSpeedMultiplier: 1.12, pierce: 0, volley: 1, chain: false, pulse: false },
     { name: "Artillería Pesada", role: "Supresión", description: "Dos proyectiles por salva y un área de impacto devastadora.", damageMultiplier: 1.38, fireRateMultiplier: 1.08, rangeMultiplier: 1.16, splashMultiplier: 1.6, slowBonus: 0.1, projectileSpeedMultiplier: 1.2, pierce: 0, volley: 2, chain: false, pulse: false },
     { name: "Mortero de Plasma", role: "Arma de energía", description: "Descargas que cubren una zona enorme.", damageMultiplier: 1.65, fireRateMultiplier: 1.12, rangeMultiplier: 1.24, splashMultiplier: 1.9, slowBonus: 0.16, projectileSpeedMultiplier: 1.45, pierce: 0, volley: 2, chain: false, pulse: true },
   ],
   spire: [
-    { name: "Aguja", role: "Control", description: "Descarga de largo alcance que ralentiza.", damageMultiplier: 1, fireRateMultiplier: 1, rangeMultiplier: 1, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1, pierce: 0, volley: 1, chain: false, pulse: false },
+    { name: "Tótem de Piedra", role: "Control ritual", description: "Un monolito rúnico canaliza energía ancestral y ralentiza.", damageMultiplier: 1, fireRateMultiplier: 1, rangeMultiplier: 1, splashMultiplier: 1, slowBonus: 0, projectileSpeedMultiplier: 1, pierce: 0, volley: 1, chain: false, pulse: false },
     { name: "Cristal Conductor", role: "Control", description: "Ralentización más intensa y alcance mejorado.", damageMultiplier: 1.06, fireRateMultiplier: 1.03, rangeMultiplier: 1.06, splashMultiplier: 1, slowBonus: 0.1, projectileSpeedMultiplier: 1.08, pierce: 0, volley: 1, chain: false, pulse: false },
     { name: "Bobina de Hierro", role: "Conductor", description: "El rayo salta hacia un objetivo cercano.", damageMultiplier: 1.18, fireRateMultiplier: 1.06, rangeMultiplier: 1.1, splashMultiplier: 1, slowBonus: 0.14, projectileSpeedMultiplier: 1.16, pierce: 0, volley: 1, chain: true, pulse: false },
     { name: "Torre Tesla", role: "Cadena eléctrica", description: "La descarga encadena objetivos y controla el frente.", damageMultiplier: 1.34, fireRateMultiplier: 1.1, rangeMultiplier: 1.18, splashMultiplier: 1, slowBonus: 0.18, projectileSpeedMultiplier: 1.25, pierce: 0, volley: 1, chain: true, pulse: false },
