@@ -108,6 +108,16 @@ export function Cinderkeep() {
   const enemyRoster = getEraEnemyRoster(hud.eraIndex);
 
   useEffect(() => {
+    if (hud.phase !== "menu") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>(".menu-surface").forEach((panel) => {
+        panel.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [screen, hud.phase]);
+
+  useEffect(() => {
     if (playing && hud.eraIndex > previousEraRef.current) {
       setEraBanner(hud.eraIndex);
       const timer = window.setTimeout(() => setEraBanner(null), 2400);
@@ -458,10 +468,18 @@ export function Cinderkeep() {
 
 function Panel({ children, scroll = false, layer = false }: { children: React.ReactNode; scroll?: boolean; layer?: boolean }) {
   if (!layer) {
-    return <div className={`menu-surface flex items-center justify-center p-4 ${scroll ? "overflow-y-auto" : ""}`}>{children}</div>;
+    return (
+      <div className={`menu-surface flex justify-center p-4 ${scroll ? "items-start overflow-y-auto" : "items-center"}`}>
+        {children}
+      </div>
+    );
   }
 
-  return <div className={`absolute inset-0 z-50 flex items-center justify-center bg-bg p-4 ${scroll ? "overflow-y-auto" : ""}`}>{children}</div>;
+  return (
+    <div className={`absolute inset-0 z-50 flex justify-center bg-bg p-4 ${scroll ? "items-start overflow-y-auto" : "items-center"}`}>
+      {children}
+    </div>
+  );
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
