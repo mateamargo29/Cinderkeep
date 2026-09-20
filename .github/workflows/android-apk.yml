@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - feat/v3.2.0-strong-era-identity
+      - feat/v3.3.1a-tower-visual-overhaul
 
 permissions:
   contents: read
@@ -55,10 +55,10 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.2.0-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.3.1-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Cinderkeep-v3.2.0-debug-apk
-          path: release/Cinderkeep-v3.2.0-debug.apk
+          name: Cinderkeep-v3.3.1-debug-apk
+          path: release/Cinderkeep-v3.3.1-debug.apk
           retention-days: 30
