@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - feat/v3.0.5-battle-fullscreen
+      - fix/v3.0.6-game-statusbar
 
 permissions:
   contents: read
@@ -55,10 +55,10 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.0.5-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/Cinderkeep-v3.0.6-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Cinderkeep-v3.0.5-debug-apk
-          path: release/Cinderkeep-v3.0.5-debug.apk
+          name: Cinderkeep-v3.0.6-debug-apk
+          path: release/Cinderkeep-v3.0.6-debug.apk
           retention-days: 30
