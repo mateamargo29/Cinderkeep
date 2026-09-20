@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { Game } from "@/game/engine";
 import { CAMPAIGN_MAPS, META_UPGRADES, getCampaignMap, upgradeCost as metaUpgradeCost } from "@/game/campaign";
 import { TOWERS } from "@/game/config";
@@ -32,6 +34,15 @@ const INITIAL: HudState = {
 const TOWER_KINDS: TowerKind[] = ["ballista", "mortar", "spire"];
 const SPEEDS: GameSpeed[] = [1, 2, 3];
 
+async function lockOrientation(orientation: "portrait" | "landscape") {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await ScreenOrientation.lock({ orientation });
+  } catch {
+    // En web o dispositivos que no permitan bloquear orientación, la UI muestra una ayuda para girar.
+  }
+}
+
 export function Cinderkeep() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
@@ -42,6 +53,7 @@ export function Cinderkeep() {
   const [bootError, setBootError] = useState<string | null>(null);
 
   useEffect(() => {
+    void lockOrientation("portrait");
     const canvas = canvasRef.current;
     if (!canvas) {
       setBootError("No se pudo crear el lienzo del juego.");
@@ -73,10 +85,23 @@ export function Cinderkeep() {
 
   const g = () => gameRef.current;
   const playing = hud.phase === "build" || hud.phase === "wave";
-  const leaveBattle = () => { g()?.returnToMenu(); setScreen("campaign"); setTechOpen(false); };
+
+  useEffect(() => {
+    const target = hud.phase === "menu" ? "portrait" : "landscape";
+    void lockOrientation(target).finally(() => {
+      window.setTimeout(() => gameRef.current?.resize(), 80);
+      window.setTimeout(() => gameRef.current?.resize(), 320);
+    });
+  }, [hud.phase]);
+
+  const leaveBattle = () => {
+    g()?.returnToMenu();
+    setScreen("campaign");
+    setTechOpen(false);
+  };
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${playing ? "game-active" : ""}`}>
       <header className="app-header z-10 flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface/95 px-3 pb-2">
         <div className="min-w-0">
           <h1 className="font-display text-lg font-bold">Cinderkeep</h1>
@@ -210,7 +235,7 @@ export function Cinderkeep() {
         )}
 
         {playing && (
-          <div className="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start justify-between gap-2">
+          <div className="mission-hud pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start justify-between gap-2">
             <div className="rounded-lg border border-border bg-bg/85 px-3 py-2 backdrop-blur">
               <p className="text-[10px] uppercase tracking-wider text-subtle">{hud.missionTitle}</p>
               <p className="text-xs font-semibold">{hud.missionProgressLabel}</p>
@@ -224,7 +249,7 @@ export function Cinderkeep() {
       </div>
 
       {playing && (
-        <footer className="z-10 shrink-0 border-t border-border bg-surface/95 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2">
+        <footer className="game-footer z-10 shrink-0 border-t border-border bg-surface/95 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2">
           {hud.selectedTower && (
             <div className="mb-2 flex gap-2 overflow-x-auto">
               <span className="chip shrink-0">{hud.selectedTower.name} · DMG {hud.selectedTower.damage}</span>
@@ -236,7 +261,7 @@ export function Cinderkeep() {
           <div className="flex gap-2 overflow-x-auto">
             {TOWER_KINDS.map((kind) => (
               <button key={kind} disabled={hud.gold < TOWERS[kind].cost} onClick={() => g()?.chooseKind(hud.selectedKind === kind ? null : kind)}
-                className={`min-w-24 rounded-lg border px-3 py-2 text-left ${hud.selectedKind === kind ? "border-brass bg-surface-2" : "border-border bg-bg"} disabled:opacity-40`}>
+                className={`tower-build-button min-w-24 rounded-lg border px-3 py-2 text-left ${hud.selectedKind === kind ? "border-brass bg-surface-2" : "border-border bg-bg"} disabled:opacity-40`}>
                 <p className="font-display text-xs font-semibold">{TOWERS[kind].name}</p><p className="text-[10px] text-muted">🪙 {TOWERS[kind].cost}</p>
               </button>
             ))}
@@ -249,6 +274,15 @@ export function Cinderkeep() {
             </button>
           </div>
         </footer>
+      )}
+
+      {playing && (
+        <div className="rotation-fallback">
+          <div className="rounded-xl border border-border bg-surface px-5 py-4 text-center shadow-xl">
+            <p className="font-display text-lg font-bold">Gira el teléfono</p>
+            <p className="mt-1 text-xs text-muted">Las partidas de Cinderkeep están optimizadas para pantalla horizontal.</p>
+          </div>
+        </div>
       )}
 
       {techOpen && playing && (
