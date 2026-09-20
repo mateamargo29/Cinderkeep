@@ -14,7 +14,19 @@ function drawEnemies(ctx: CanvasRenderingContext2D, game: Game, assets: GameAsse
     ctx.save();
     ctx.translate(e.x, e.y);
     ctx.rotate(e.facing);
-    if (e.flash > 0) ctx.filter = "brightness(1.8)";
+    const eraFilter =
+      e.era === 1 ? "sepia(0.95) saturate(1.8) brightness(1.08)" :
+      e.era === 2 ? "grayscale(0.72) contrast(1.28) brightness(1.08)" :
+      e.era === 3 ? "grayscale(0.48) contrast(1.35) brightness(0.94)" :
+      e.era === 4 ? "hue-rotate(155deg) saturate(1.8) brightness(1.22)" :
+      "none";
+    ctx.filter = e.flash > 0
+      ? (eraFilter === "none" ? "brightness(1.8)" : `${eraFilter} brightness(1.55)`)
+      : eraFilter;
+    if (e.era === 4) {
+      ctx.shadowBlur = e.boss ? 18 : 10;
+      ctx.shadowColor = "#86e2ff";
+    }
     drawFrame(ctx, atlas, frame, -size / 2, -size / 2, size, size);
     drawEnemyEvolution(ctx, e, size);
     if (e.fortifyTimer > 0) drawEnemyFortify(ctx, e, size);
@@ -45,46 +57,73 @@ function drawFrame(
 }
 
 function drawEnemyEvolution(ctx: CanvasRenderingContext2D, e: Enemy, size: number) {
-  const colors = ["#8c6f55", "#c4a46a", "#8f8a82", "#b54a3c", "#a9d8e8"];
+  const colors = ["#8c6f55", "#e2ad58", "#bdc6cd", "#cf563f", "#86e2ff"];
   const color = colors[Math.max(0, Math.min(e.era, colors.length - 1))];
   ctx.save();
-  ctx.globalAlpha = 0.75;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = e.boss ? 4 : 2.5;
-  if (e.role === "infantry") {
-    ctx.strokeRect(-size * 0.42, -size * 0.42, size * 0.84, size * 0.84);
-  } else if (e.role === "fast") {
-    ctx.beginPath();
-    ctx.moveTo(-size * 0.5, -size * 0.18);
-    ctx.lineTo(-size * 0.18, -size * 0.38);
-    ctx.moveTo(-size * 0.5, size * 0.1);
-    ctx.lineTo(-size * 0.12, -size * 0.08);
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.arc(0, 0, size * (e.boss ? 0.56 : 0.49), 0, Math.PI * 2);
-    ctx.stroke();
-  }
 
-  if (e.era >= 3) {
-    ctx.fillStyle = e.era === 4 ? "rgba(169,216,232,0.18)" : "rgba(181,74,60,0.16)";
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.53, 0, Math.PI * 2);
-    ctx.fill();
+  if (e.era === 1) {
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = "rgba(190,122,48,0.68)";
+    if (e.role === "infantry") {
+      ctx.beginPath(); ctx.arc(0, -size * 0.20, size * 0.25, Math.PI, 0); ctx.fill();
+      ctx.fillRect(-size * 0.34, size * 0.02, size * 0.20, size * 0.34);
+    } else if (e.role === "fast") {
+      ctx.beginPath(); ctx.moveTo(-size * 0.48, -size * 0.23); ctx.lineTo(-size * 0.10, -size * 0.40); ctx.lineTo(-size * 0.20, -size * 0.10); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.38, -size * 0.34); ctx.lineTo(size * 0.35, -size * 0.34);
+      ctx.lineTo(size * 0.42, size * 0.28); ctx.lineTo(0, size * 0.48); ctx.lineTo(-size * 0.42, size * 0.28);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = "#f0cd82"; ctx.lineWidth = e.boss ? 4 : 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.52, 0, Math.PI * 2); ctx.stroke();
+  } else if (e.era === 2) {
+    ctx.globalAlpha = 0.88;
+    ctx.strokeStyle = "#c7d0d7"; ctx.lineWidth = e.boss ? 5 : 3;
+    ctx.strokeRect(-size * 0.43, -size * 0.40, size * 0.86, size * 0.80);
+    ctx.fillStyle = "rgba(72,80,87,0.55)";
+    ctx.fillRect(-size * 0.48, -size * 0.08, size * 0.96, size * 0.16);
+    for (const x of [-0.30, 0.30]) for (const y of [-0.27, 0.27]) {
+      ctx.fillStyle = "#d6a35f"; ctx.beginPath(); ctx.arc(x * size, y * size, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (e.era === 3) {
+    ctx.globalAlpha = 0.90;
+    ctx.fillStyle = "rgba(45,50,53,0.58)";
+    ctx.fillRect(-size * 0.46, -size * 0.38, size * 0.92, size * 0.76);
+    ctx.strokeStyle = "#d45a42"; ctx.lineWidth = e.boss ? 5 : 3;
+    ctx.beginPath(); ctx.moveTo(-size * 0.5, size * 0.30); ctx.lineTo(size * 0.48, size * 0.30); ctx.stroke();
+    ctx.fillStyle = "#ea9a47"; ctx.fillRect(size * 0.18, -size * 0.31, size * 0.15, size * 0.10);
+  } else if (e.era === 4) {
+    const pulse = 0.62 + Math.sin(e.anim * 0.7) * 0.16;
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = "#9be9ff"; ctx.lineWidth = e.boss ? 5 : 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.56, 0, Math.PI * 2); ctx.stroke();
+    ctx.save(); ctx.rotate(e.anim * 0.08); ctx.strokeRect(-size * 0.38, -size * 0.38, size * 0.76, size * 0.76); ctx.restore();
+    ctx.fillStyle = "rgba(134,226,255,0.22)"; ctx.beginPath(); ctx.arc(0, 0, size * 0.48, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.globalAlpha = 0.70;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = e.boss ? 4 : 2.5;
+    if (e.role === "infantry") {
+      ctx.strokeRect(-size * 0.42, -size * 0.42, size * 0.84, size * 0.84);
+    } else if (e.role === "fast") {
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.5, -size * 0.18); ctx.lineTo(-size * 0.18, -size * 0.38);
+      ctx.moveTo(-size * 0.5, size * 0.1); ctx.lineTo(-size * 0.12, -size * 0.08); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(0, 0, size * (e.boss ? 0.56 : 0.49), 0, Math.PI * 2); ctx.stroke();
+    }
   }
 
   if (e.boss) {
+    ctx.globalAlpha = 1;
     ctx.fillStyle = color;
-    const y = -size * 0.62;
+    const y = -size * 0.64;
     ctx.beginPath();
-    ctx.moveTo(-10, y + 7);
-    ctx.lineTo(-7, y - 2);
-    ctx.lineTo(0, y + 4);
-    ctx.lineTo(7, y - 2);
-    ctx.lineTo(10, y + 7);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(-12, y + 8); ctx.lineTo(-8, y - 3); ctx.lineTo(0, y + 4); ctx.lineTo(8, y - 3); ctx.lineTo(12, y + 8);
+    ctx.closePath(); ctx.fill();
   }
+
   ctx.restore();
 }
 
