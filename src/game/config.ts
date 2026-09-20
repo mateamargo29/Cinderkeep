@@ -92,10 +92,10 @@ const enemy = (
 });
 
 export const ENEMIES: Record<EnemyKind, EnemyDef> = {
-  ashling: enemy({ kind: "ashling", name: "Cenizal", hp: 38, speed: 1.55, gold: 7, armor: 0, scale: 0.92, sprite: "ashling", era: 0, role: "infantry", boss: false, leakDamage: 1, ability: "Infantería básica de ceniza." }),
-  streaker: enemy({ kind: "streaker", name: "Rapaz", hp: 24, speed: 2.55, gold: 9, armor: 0, scale: 0.88, sprite: "streaker", era: 0, role: "fast", boss: false, leakDamage: 1, ability: "Muy veloz; castiga huecos en la defensa.", slowResist: 0.05 }),
-  carapace: enemy({ kind: "carapace", name: "Caparazón", hp: 110, speed: 0.95, gold: 15, armor: 0.32, scale: 1.12, sprite: "carapace", era: 0, role: "armored", boss: false, leakDamage: 1, ability: "Blindaje natural resistente." }),
-  warden: enemy({ kind: "warden", name: "Guardián de Ceniza", hp: 780, speed: 0.7, gold: 90, armor: 0.18, scale: 1.7, sprite: "carapace", era: 0, role: "boss", boss: true, leakDamage: 3, ability: "Rugido de ceniza: acelera temporalmente a los enemigos cercanos; una fuga cuesta 3 vidas." }),
+  ashling: enemy({ kind: "ashling", name: "Cazador de Piedra", hp: 38, speed: 1.55, gold: 7, armor: 0, scale: 0.92, sprite: "ashling", era: 0, role: "infantry", boss: false, leakDamage: 1, ability: "Guerrero tribal armado con sílex y pieles." }),
+  streaker: enemy({ kind: "streaker", name: "Corredor Tribal", hp: 24, speed: 2.55, gold: 9, armor: 0, scale: 0.88, sprite: "streaker", era: 0, role: "fast", boss: false, leakDamage: 1, ability: "Explorador ligero que aprovecha cualquier hueco en la defensa.", slowResist: 0.05 }),
+  carapace: enemy({ kind: "carapace", name: "Bruto de Piedra", hp: 110, speed: 0.95, gold: 15, armor: 0.32, scale: 1.12, sprite: "carapace", era: 0, role: "armored", boss: false, leakDamage: 1, ability: "Pieles gruesas, hueso y placas de roca improvisadas." }),
+  warden: enemy({ kind: "warden", name: "Jefe del Clan", hp: 780, speed: 0.7, gold: 90, armor: 0.18, scale: 1.7, sprite: "carapace", era: 0, role: "boss", boss: true, leakDamage: 3, ability: "Grito de guerra: acelera temporalmente a los guerreros cercanos; una fuga cuesta 3 vidas." }),
 
   bronze_raider: enemy({ kind: "bronze_raider", name: "Saqueador de Bronce", hp: 42, speed: 1.52, gold: 8, armor: 0.05, scale: 0.95, sprite: "ashling", era: 1, role: "infantry", boss: false, leakDamage: 1, ability: "Armadura ligera de bronce.", resistSpire: 0.04 }),
   bronze_scout: enemy({ kind: "bronze_scout", name: "Explorador de Bronce", hp: 26, speed: 2.65, gold: 10, armor: 0.02, scale: 0.88, sprite: "streaker", era: 1, role: "fast", boss: false, leakDamage: 1, ability: "Reduce parte de la ralentización.", slowResist: 0.12 }),
