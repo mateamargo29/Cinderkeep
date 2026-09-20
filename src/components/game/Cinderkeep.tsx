@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
+import { StatusBar, Style } from "@capacitor/status-bar";
 import { Game } from "@/game/engine";
 import { CAMPAIGN_MAPS, META_UPGRADES, getCampaignMap, upgradeCost as metaUpgradeCost } from "@/game/campaign";
 import { TOWERS } from "@/game/config";
@@ -40,6 +41,22 @@ async function lockOrientation(orientation: "portrait" | "landscape") {
     await ScreenOrientation.lock({ orientation });
   } catch {
     // En web o dispositivos que no permitan bloquear orientación, la UI muestra una ayuda para girar.
+  }
+}
+
+async function setBattleChrome(active: boolean) {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    if (active) {
+      await StatusBar.hide();
+    } else {
+      await StatusBar.show();
+      await StatusBar.setOverlaysWebView({ overlay: false });
+      await StatusBar.setBackgroundColor({ color: "#0c0b0a" });
+      await StatusBar.setStyle({ style: Style.Light });
+    }
+  } catch {
+    // Si Android no permite ocultar la barra, el HUD conserva márgenes defensivos.
   }
 }
 
@@ -87,10 +104,15 @@ export function Cinderkeep() {
   const playing = hud.phase === "build" || hud.phase === "wave";
 
   useEffect(() => {
+    const activeBattle = hud.phase === "build" || hud.phase === "wave";
     const target = hud.phase === "menu" ? "portrait" : "landscape";
-    void lockOrientation(target).finally(() => {
-      window.setTimeout(() => gameRef.current?.resize(), 80);
-      window.setTimeout(() => gameRef.current?.resize(), 320);
+
+    void Promise.all([
+      lockOrientation(target),
+      setBattleChrome(activeBattle),
+    ]).finally(() => {
+      window.setTimeout(() => gameRef.current?.resize(), 100);
+      window.setTimeout(() => gameRef.current?.resize(), 360);
     });
   }, [hud.phase]);
 
