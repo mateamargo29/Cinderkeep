@@ -67,7 +67,7 @@ function drawEraTerrain(ctx: CanvasRenderingContext2D, game: Game, time: number)
   const era = Math.max(0, Math.min(4, game.eraIndex));
   const theme = getWorldTheme(era);
   const palette = [
-    { ground: "rgba(54,34,27,0.20)", edge: "rgba(42,25,19,0.72)", path: "rgba(99,58,39,0.48)", trim: "rgba(196,92,38,0.24)" },
+    { ground: "rgba(77,65,46,0.56)", edge: "rgba(44,36,27,0.96)", path: "rgba(112,91,61,0.86)", trim: "rgba(190,164,116,0.52)" },
     { ground: "rgba(103,67,31,0.58)", edge: "rgba(57,36,19,0.96)", path: "rgba(155,105,52,0.90)", trim: "rgba(238,190,101,0.72)" },
     { ground: "rgba(52,58,64,0.62)", edge: "rgba(28,31,34,0.96)", path: "rgba(105,113,120,0.92)", trim: "rgba(199,207,214,0.68)" },
     { ground: "rgba(29,35,39,0.70)", edge: "rgba(17,20,22,0.98)", path: "rgba(70,76,79,0.96)", trim: "rgba(208,76,54,0.74)" },
@@ -117,13 +117,29 @@ function drawEraGroundIdentity(ctx: CanvasRenderingContext2D, era: number, time:
   ctx.save();
 
   if (era === 0) {
-    ctx.strokeStyle = "rgba(116,78,56,0.10)";
-    ctx.lineWidth = 1;
-    for (let y = 22; y < WORLD_H; y += 58) {
+    ctx.fillStyle = "rgba(126,111,78,0.16)";
+    for (let y = 0; y < WORLD_H; y += 64) {
+      for (let x = (Math.floor(y / 64) % 2) * 32; x < WORLD_W; x += 64) {
+        ctx.beginPath();
+        ctx.ellipse(x + 18, y + 18, 20, 12, (x + y) * 0.001, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.strokeStyle = "rgba(207,187,138,0.14)";
+    ctx.lineWidth = 2;
+    for (let x = -40; x < WORLD_W + 40; x += 92) {
       ctx.beginPath();
-      ctx.moveTo(0, y + Math.sin(y * 0.03) * 5);
-      ctx.lineTo(WORLD_W, y + Math.sin(y * 0.03 + 1.4) * 5);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 34, WORLD_H);
       ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(52,42,31,0.42)";
+    for (let i = 0; i < 18; i++) {
+      const x = (i * 149 + 37) % WORLD_W;
+      const y = (i * 91 + 53) % WORLD_H;
+      ctx.beginPath();
+      ctx.arc(x, y, 5 + (i % 3) * 3, 0, Math.PI * 2);
+      ctx.fill();
     }
   } else if (era === 1) {
     ctx.fillStyle = "rgba(215,165,84,0.10)";
@@ -205,10 +221,34 @@ function drawEraProps(ctx: CanvasRenderingContext2D, era: number, time: number) 
 
   ctx.save();
   if (era === 0) {
-    ctx.fillStyle = "rgba(72,55,45,0.48)";
-    for (const p of points) {
-      ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(p.x - 3, p.y - 18, 6, 19);
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      ctx.fillStyle = "rgba(58,49,38,0.96)";
+      ctx.beginPath();
+      ctx.moveTo(p.x - 10, p.y + 15);
+      ctx.lineTo(p.x - 7, p.y - 20);
+      ctx.lineTo(p.x + 4, p.y - 30);
+      ctx.lineTo(p.x + 10, p.y + 15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(176,155,112,0.68)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(218,192,131,0.50)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x - 4, p.y - 11); ctx.lineTo(p.x + 4, p.y - 3);
+      ctx.moveTo(p.x + 4, p.y - 11); ctx.lineTo(p.x - 4, p.y - 3);
+      ctx.stroke();
+
+      if (i % 2 === 0) {
+        const flame = 0.72 + Math.sin(time * 5 + i) * 0.18;
+        ctx.fillStyle = "rgba(62,42,25,0.86)";
+        ctx.beginPath(); ctx.arc(p.x + 23, p.y + 13, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(226,119,48,${flame})`;
+        ctx.beginPath(); ctx.arc(p.x + 23, p.y + 6, 5, 0, Math.PI * 2); ctx.fill();
+      }
     }
   } else if (era === 1) {
     for (const p of points) {
@@ -286,7 +326,22 @@ function drawKeep(ctx: CanvasRenderingContext2D, game: Game, assets: GameAssets,
 
   ctx.save();
 
-  if (eraIndex === 1) {
+  if (eraIndex === 0) {
+    ctx.fillStyle = "rgba(50,39,29,0.96)";
+    ctx.fillRect(p.x - 47, p.y + 2, 94, 30);
+    ctx.strokeStyle = "rgba(142,107,70,0.94)";
+    ctx.lineWidth = 6;
+    for (let x = -42; x <= 42; x += 14) {
+      ctx.beginPath(); ctx.moveTo(p.x + x, p.y + 31); ctx.lineTo(p.x + x, p.y - 18 - Math.abs(x % 28) * 0.35); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(88,78,61,0.94)";
+    ctx.beginPath(); ctx.arc(p.x, p.y - 4, 28, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "rgba(24,19,15,0.96)";
+    ctx.beginPath(); ctx.arc(p.x, p.y + 2, 16, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = "rgba(208,181,125,0.62)";
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(p.x, p.y - 4, 30, Math.PI, 0); ctx.stroke();
+  } else if (eraIndex === 1) {
     ctx.fillStyle = "rgba(73,44,21,0.96)";
     ctx.fillRect(p.x - 44, p.y - 12, 88, 44);
     ctx.fillStyle = "rgba(176,112,47,0.96)";
@@ -333,6 +388,7 @@ function drawKeep(ctx: CanvasRenderingContext2D, game: Game, assets: GameAssets,
 
   ctx.globalAlpha = 1;
   ctx.filter =
+    eraIndex === 0 ? "sepia(0.55) saturate(0.72) brightness(0.86) contrast(1.18)" :
     eraIndex === 1 ? "sepia(0.9) saturate(1.55) brightness(1.05)" :
     eraIndex === 2 ? "grayscale(0.7) contrast(1.22) brightness(1.08)" :
     eraIndex === 3 ? "grayscale(0.5) contrast(1.28) brightness(0.92)" :
@@ -427,10 +483,15 @@ function drawTowerBase(ctx: CanvasRenderingContext2D, kind: TowerKind, era: numb
   const pulse = 0.5 + Math.sin(time * 2 + id) * 0.08;
 
   if (era === 0) {
-    ctx.fillStyle = "rgba(42,31,24,0.96)";
-    ctx.beginPath(); ctx.arc(0, 10, 24, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "rgba(127,87,58,0.9)"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 10, 24, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "rgba(57,50,40,0.98)";
+    ctx.beginPath();
+    ctx.moveTo(-27, 22); ctx.lineTo(-22, -8); ctx.lineTo(-8, -18); ctx.lineTo(15, -14); ctx.lineTo(27, 7); ctx.lineTo(20, 28); ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(166,146,106,0.86)"; ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = "rgba(91,71,49,0.62)";
+    ctx.beginPath(); ctx.arc(-10, 7, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9, 13, 5, 0, Math.PI * 2); ctx.fill();
   } else if (era === 1) {
     ctx.fillStyle = "rgba(91,53,22,0.98)";
     ctx.beginPath();
@@ -473,10 +534,14 @@ function drawTowerBase(ctx: CanvasRenderingContext2D, kind: TowerKind, era: numb
 function drawBallistaEra(ctx: CanvasRenderingContext2D, era: number, time: number, id: number, recoil: number) {
   ctx.save();
   if (era === 0) {
-    ctx.strokeStyle = "#8b6041"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(-27,-15); ctx.lineTo(0,0); ctx.lineTo(-27,15); ctx.stroke();
-    ctx.strokeStyle = "#c6b28a"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(-27,-15); ctx.lineTo(-27,15); ctx.stroke();
+    ctx.strokeStyle = "#79583a"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-27,-16); ctx.lineTo(1,0); ctx.lineTo(-27,16); ctx.stroke();
+    ctx.strokeStyle = "#d4c093"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-27,-16); ctx.lineTo(-27,16); ctx.stroke();
+    ctx.fillStyle = "#5a5140";
+    ctx.beginPath(); ctx.moveTo(6,-4); ctx.lineTo(34,0); ctx.lineTo(6,4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#bca977";
+    ctx.beginPath(); ctx.moveTo(31,0); ctx.lineTo(39,-5); ctx.lineTo(38,5); ctx.closePath(); ctx.fill();
   } else if (era === 1) {
     ctx.fillStyle = "rgba(210,139,55,0.92)";
     ctx.fillRect(-30,-7,54,14);
@@ -517,8 +582,16 @@ function drawBallistaEra(ctx: CanvasRenderingContext2D, era: number, time: numbe
 function drawMortarEra(ctx: CanvasRenderingContext2D, era: number, time: number, id: number, recoil: number) {
   ctx.save();
   if (era === 0) {
-    ctx.fillStyle = "#5a4330"; ctx.beginPath(); ctx.arc(0,6,18,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle = "#8f6a49"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-10,-2); ctx.lineTo(4,-25); ctx.stroke();
+    ctx.fillStyle = "#67523b"; ctx.fillRect(-22,7,44,12);
+    ctx.strokeStyle = "#8b6743"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-16,12); ctx.lineTo(-2,-25); ctx.lineTo(15,8); ctx.stroke();
+    ctx.strokeStyle = "#cfba8c"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-2,-25); ctx.lineTo(10,-34); ctx.stroke();
+    ctx.fillStyle = "#4b463a";
+    ctx.beginPath(); ctx.arc(14,-36,7,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#2e2921";
+    ctx.beginPath(); ctx.arc(-14,22,7,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(14,22,7,0,Math.PI*2); ctx.fill();
   } else if (era === 1) {
     ctx.fillStyle = "rgba(201,132,50,0.94)"; ctx.beginPath(); ctx.arc(0,6,21,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle = "#f0c66f"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0,6,21,0,Math.PI*2); ctx.stroke();
@@ -553,8 +626,12 @@ function drawMortarEra(ctx: CanvasRenderingContext2D, era: number, time: number,
 function drawSpireEra(ctx: CanvasRenderingContext2D, era: number, time: number, id: number, recoil: number) {
   ctx.save();
   if (era === 0) {
-    ctx.fillStyle = "#5f4634"; ctx.beginPath(); ctx.moveTo(0,-31); ctx.lineTo(-16,20); ctx.lineTo(16,20); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#c58c55"; ctx.beginPath(); ctx.arc(0,-10,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#595447";
+    ctx.beginPath(); ctx.moveTo(-9,-34); ctx.lineTo(8,-31); ctx.lineTo(15,21); ctx.lineTo(-15,21); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#9e9070"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = "#d0b879"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(-6,-12); ctx.lineTo(5,-3); ctx.lineTo(-4,8); ctx.lineTo(3,16); ctx.stroke();
+    ctx.fillStyle = "#e2a556"; ctx.beginPath(); ctx.arc(0,-14,4,0,Math.PI*2); ctx.fill();
   } else if (era === 1) {
     ctx.fillStyle = "rgba(187,118,43,0.94)"; ctx.beginPath(); ctx.moveTo(0,-36); ctx.lineTo(-20,22); ctx.lineTo(20,22); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "#f1c873"; ctx.lineWidth = 3; ctx.stroke();
