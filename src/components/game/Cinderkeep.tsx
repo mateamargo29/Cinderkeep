@@ -102,18 +102,19 @@ export function Cinderkeep() {
 
   return (
     <main className={`app-shell ${playing ? "game-active" : ""}`}>
-      <header className="app-header z-10 flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface/95 px-3 pb-2">
-        <div className="min-w-0">
-          <h1 className="font-display text-lg font-bold">Cinderkeep</h1>
-          <p className="truncate text-[11px] text-muted">
-            {playing ? `${hud.campaignMapName} · ${hud.eraName}` : `Campaña · Nivel ${hud.campaignLevel}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {playing ? <><Badge>❤️ {hud.lives}</Badge><Badge>🪙 {hud.gold}</Badge></> : <><Badge>💎 {hud.campaignShards}</Badge><Badge>🏆 {hud.campaignLevel}</Badge></>}
-          <button className="btn-square" onClick={() => g()?.toggleMute()}>{hud.muted ? "🔇" : "🔊"}</button>
-        </div>
-      </header>
+      {!playing && (
+        <header className="app-header z-10 flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface/95 px-3 pb-2">
+          <div className="min-w-0">
+            <h1 className="font-display text-lg font-bold">Cinderkeep</h1>
+            <p className="truncate text-[11px] text-muted">Campaña · Nivel {hud.campaignLevel}</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <Badge>💎 {hud.campaignShards}</Badge>
+            <Badge>🏆 {hud.campaignLevel}</Badge>
+            <button className="btn-square" onClick={() => g()?.toggleMute()}>{hud.muted ? "🔇" : "🔊"}</button>
+          </div>
+        </header>
+      )}
 
       <div className="game-stage">
         <canvas
@@ -239,10 +240,18 @@ export function Cinderkeep() {
             <div className="rounded-lg border border-border bg-bg/85 px-3 py-2 backdrop-blur">
               <p className="text-[10px] uppercase tracking-wider text-subtle">{hud.missionTitle}</p>
               <p className="text-xs font-semibold">{hud.missionProgressLabel}</p>
+              <p className="mt-0.5 text-[9px] text-muted">{hud.campaignMapName} · {hud.eraName}</p>
             </div>
-            <div className="pointer-events-auto flex gap-1">
-              {SPEEDS.map((s) => <button key={s} onClick={() => g()?.setGameSpeed(s)} className={hud.gameSpeed === s ? "chip-active" : "chip"}>{s}×</button>)}
-              <button className="chip" onClick={() => g()?.togglePause()}>{hud.paused ? "▶" : "Ⅱ"}</button>
+            <div className="pointer-events-auto flex flex-col items-end gap-1">
+              <div className="flex gap-1">
+                <Badge>❤️ {hud.lives}</Badge>
+                <Badge>🪙 {hud.gold}</Badge>
+                <button className="btn-square hud-audio" onClick={() => g()?.toggleMute()}>{hud.muted ? "🔇" : "🔊"}</button>
+              </div>
+              <div className="flex gap-1">
+                {SPEEDS.map((s) => <button key={s} onClick={() => g()?.setGameSpeed(s)} className={hud.gameSpeed === s ? "chip-active" : "chip"}>{s}×</button>)}
+                <button className="chip" onClick={() => g()?.togglePause()}>{hud.paused ? "▶" : "Ⅱ"}</button>
+              </div>
             </div>
           </div>
         )}
