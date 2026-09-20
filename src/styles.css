@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "./";
+@source "../mobile";
 
 @theme {
   --color-bg: #0c0b0a;
