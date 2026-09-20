@@ -4,8 +4,8 @@ import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { Game } from "@/game/engine";
 import { CAMPAIGN_MAPS, META_UPGRADES, getCampaignMap, upgradeCost as metaUpgradeCost } from "@/game/campaign";
-import { TOWERS } from "@/game/config";
-import { ERAS, TECH_TREE, getBranches, getEraProject } from "@/game/evolution";
+import { TOWERS, getEraEnemyRoster } from "@/game/config";
+import { ERAS, TECH_TREE, getBranches, getEraProject, getWorldTheme } from "@/game/evolution";
 import { DIFFICULTIES } from "@/game/settings";
 import type { DifficultyId, GameSpeed, HudState, MapId, MetaUpgradeId, TowerKind } from "@/game/types";
 
@@ -68,6 +68,8 @@ export function Cinderkeep() {
   const [techOpen, setTechOpen] = useState(false);
   const [tutorial, setTutorial] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [eraBanner, setEraBanner] = useState<number | null>(null);
+  const previousEraRef = useRef(0);
 
   useEffect(() => {
     void lockOrientation("portrait");
@@ -102,6 +104,18 @@ export function Cinderkeep() {
 
   const g = () => gameRef.current;
   const playing = hud.phase === "build" || hud.phase === "wave";
+  const currentWorld = getWorldTheme(hud.eraIndex);
+  const enemyRoster = getEraEnemyRoster(hud.eraIndex);
+
+  useEffect(() => {
+    if (playing && hud.eraIndex > previousEraRef.current) {
+      setEraBanner(hud.eraIndex);
+      const timer = window.setTimeout(() => setEraBanner(null), 2400);
+      previousEraRef.current = hud.eraIndex;
+      return () => window.clearTimeout(timer);
+    }
+    previousEraRef.current = hud.eraIndex;
+  }, [hud.eraIndex, playing]);
 
   useEffect(() => {
     const activeBattle = hud.phase === "build" || hud.phase === "wave";
@@ -257,6 +271,16 @@ export function Cinderkeep() {
           </Panel>
         )}
 
+        {playing && eraBanner != null && (
+          <div className="era-transition pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+            <div className="era-transition-card">
+              <p className="text-[10px] uppercase tracking-[.32em] text-brass">Nueva época</p>
+              <h2 className="mt-1 font-display text-3xl font-bold">{ERAS[eraBanner]?.name}</h2>
+              <p className="mt-1 text-xs text-muted">{getWorldTheme(eraBanner).name} · {getWorldTheme(eraBanner).subtitle}</p>
+            </div>
+          </div>
+        )}
+
         {playing && (
           <div className="mission-hud pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start justify-between gap-2">
             <div className="rounded-lg border border-border bg-bg/85 px-3 py-2 backdrop-blur">
@@ -296,7 +320,7 @@ export function Cinderkeep() {
                 <p className="font-display text-xs font-semibold">{TOWERS[kind].name}</p><p className="text-[10px] text-muted">🪙 {TOWERS[kind].cost}</p>
               </button>
             ))}
-            <button className="min-w-24 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-semibold" onClick={() => setTechOpen(true)}>Tecnología</button>
+            <button className="min-w-24 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-semibold" onClick={() => setTechOpen(true)}>Consejo</button>
             <button disabled={!hud.researchReady} className="min-w-24 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-semibold disabled:opacity-35" onClick={() => g()?.researchEra()}>
               Siguiente era<br/><span className="text-[10px] text-muted">{hud.researchCost ?? "MAX"}</span>
             </button>
@@ -317,8 +341,27 @@ export function Cinderkeep() {
       )}
 
       {techOpen && playing && (
-        <Modal title="Árbol tecnológico" onClose={() => setTechOpen(false)}>
+        <Modal title="Consejo de Guerra" onClose={() => setTechOpen(false)}>
           <div className="space-y-4">
+            <section className="war-council-summary rounded-xl border border-brass/35 bg-bg p-3">
+              <div className="grid gap-3 sm:grid-cols-[1.25fr_.75fr]">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[.24em] text-brass">Situación estratégica</p>
+                  <h3 className="mt-1 font-display text-lg font-semibold">{hud.eraName} · {currentWorld.name}</h3>
+                  <p className="mt-1 text-xs text-muted">{currentWorld.subtitle}</p>
+                  <p className="mt-2 text-[11px] text-subtle">
+                    Ejército enemigo: {enemyRoster.map((enemy) => enemy.name).join(" · ")}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-surface p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-subtle">Recursos</p>
+                  <p className="mt-1 font-display text-xl font-bold">🪙 {hud.gold}</p>
+                  <p className="mt-1 text-[10px] text-muted">
+                    {hud.phase === "build" ? "Puedes investigar antes de lanzar la siguiente oleada." : "Espera al final de la oleada para invertir."}
+                  </p>
+                </div>
+              </div>
+            </section>
             {ERAS.map((era, index) => (
               <section key={era.id} className={`rounded-xl border p-3 ${index <= hud.eraIndex ? "border-border bg-surface" : "border-border/50 opacity-45"}`}>
                 <div className="flex items-center justify-between"><h3 className="font-display font-semibold">{era.name}</h3><span className="text-[10px] text-muted">{index <= hud.eraIndex ? "Desbloqueada" : "Bloqueada"}</span></div>
@@ -330,7 +373,9 @@ export function Cinderkeep() {
                       if (!tech) return null;
                       const done = hud.researchedTech.includes(tech.id);
                       return <button key={tech.id} disabled={done || hud.gold < tech.cost} className="rounded-lg border border-border bg-surface-2 p-2 text-left disabled:opacity-45" onClick={() => g()?.researchTech(tech.id)}>
-                        <p className="text-xs font-semibold">{tech.name}</p><p className="text-[10px] text-muted">{done ? "Investigada" : `🪙 ${tech.cost}`}</p>
+                        <p className="text-xs font-semibold">{tech.name}</p>
+                        <p className="mt-1 text-[10px] leading-snug text-muted">{tech.description}</p>
+                        <p className="mt-1 text-[10px] text-brass">{done ? "Investigada" : `🪙 ${tech.cost}`}</p>
                       </button>;
                     })}
                   </div>
@@ -341,7 +386,9 @@ export function Cinderkeep() {
                       <p className="mb-2 text-[10px] uppercase text-subtle">{TOWERS[kind].name} · doctrina</p>
                       {getBranches(kind).map((b) => <button key={b.id} disabled={hud.researchedTech.some((id) => id.startsWith(`${kind}:`)) || hud.gold < b.cost}
                         className="mb-1 w-full rounded-md border border-border bg-bg p-2 text-left text-xs disabled:opacity-45" onClick={() => g()?.researchBranch(b.id)}>
-                        {b.shortName} · 🪙 {b.cost}
+                        <span className="font-semibold">{b.shortName}</span>
+                        <span className="mt-1 block text-[10px] leading-snug text-muted">{b.description}</span>
+                        <span className="mt-1 block text-[10px] text-brass">🪙 {b.cost}</span>
                       </button>)}
                     </div>)}
                   </div>
