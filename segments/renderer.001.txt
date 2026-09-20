@@ -64,39 +64,60 @@ function drawHover(ctx: CanvasRenderingContext2D, game: Game, assets: GameAssets
 }
 
 function drawEraTerrain(ctx: CanvasRenderingContext2D, game: Game, time: number) {
-  const theme = getWorldTheme(game.eraIndex);
+  const era = Math.max(0, Math.min(4, game.eraIndex));
+  const theme = getWorldTheme(era);
+  const palette = [
+    { ground: "rgba(54,34,27,0.20)", edge: "rgba(42,25,19,0.72)", path: "rgba(99,58,39,0.48)", trim: "rgba(196,92,38,0.24)" },
+    { ground: "rgba(103,67,31,0.58)", edge: "rgba(57,36,19,0.96)", path: "rgba(155,105,52,0.90)", trim: "rgba(238,190,101,0.72)" },
+    { ground: "rgba(52,58,64,0.62)", edge: "rgba(28,31,34,0.96)", path: "rgba(105,113,120,0.92)", trim: "rgba(199,207,214,0.68)" },
+    { ground: "rgba(29,35,39,0.70)", edge: "rgba(17,20,22,0.98)", path: "rgba(70,76,79,0.96)", trim: "rgba(208,76,54,0.74)" },
+    { ground: "rgba(16,38,57,0.72)", edge: "rgba(8,22,34,0.98)", path: "rgba(31,79,101,0.94)", trim: "rgba(120,225,255,0.84)" },
+  ][era];
+
   ctx.save();
+  ctx.fillStyle = palette.ground;
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   ctx.fillStyle = theme.tint;
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
-  drawEraGroundIdentity(ctx, game.eraIndex, time);
+  drawEraGroundIdentity(ctx, era, time);
+
+  const tracePath = () => {
+    ctx.beginPath();
+    game.path.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  };
 
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
-  ctx.strokeStyle = theme.pathGlow;
-  ctx.lineWidth = CELL * 0.58;
-  ctx.beginPath();
-  game.path.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.strokeStyle = palette.edge;
+  ctx.lineWidth = CELL * 0.92;
+  tracePath();
   ctx.stroke();
 
-  if (game.eraIndex >= 2) {
-    ctx.setLineDash(game.eraIndex === 4 ? [4, 13] : [10, 18]);
-    ctx.lineDashOffset = -time * (game.eraIndex === 4 ? 24 : 8);
-    ctx.strokeStyle = game.eraIndex === 4 ? "rgba(134,214,239,0.42)" : game.eraIndex === 3 ? "rgba(214,90,63,0.24)" : "rgba(190,196,200,0.19)";
-    ctx.lineWidth = game.eraIndex === 4 ? 2 : 3;
-    ctx.beginPath();
-    game.path.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  ctx.strokeStyle = palette.path;
+  ctx.lineWidth = CELL * 0.68;
+  tracePath();
+  ctx.stroke();
 
-  drawEraProps(ctx, game.eraIndex, time);
+  ctx.strokeStyle = palette.trim;
+  ctx.lineWidth = era === 0 ? 2 : era === 4 ? 4 : 3;
+  if (era === 1) ctx.setLineDash([18, 12]);
+  if (era === 2) ctx.setLineDash([12, 8]);
+  if (era === 3) ctx.setLineDash([22, 7, 4, 7]);
+  if (era === 4) ctx.setLineDash([5, 10]);
+  ctx.lineDashOffset = -time * (era === 4 ? 30 : era >= 2 ? 9 : 4);
+  tracePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  drawEraProps(ctx, era, time);
   ctx.restore();
 }
 
 function drawEraGroundIdentity(ctx: CanvasRenderingContext2D, era: number, time: number) {
   ctx.save();
+
   if (era === 0) {
-    ctx.strokeStyle = "rgba(116,78,56,0.08)";
+    ctx.strokeStyle = "rgba(116,78,56,0.10)";
     ctx.lineWidth = 1;
     for (let y = 22; y < WORLD_H; y += 58) {
       ctx.beginPath();
@@ -105,99 +126,130 @@ function drawEraGroundIdentity(ctx: CanvasRenderingContext2D, era: number, time:
       ctx.stroke();
     }
   } else if (era === 1) {
-    ctx.strokeStyle = "rgba(212,166,91,0.11)";
-    ctx.lineWidth = 2;
-    for (let x = -WORLD_H; x < WORLD_W; x += 76) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + WORLD_H, WORLD_H);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "rgba(164,105,54,0.08)";
-    for (let x = 34; x < WORLD_W; x += 144) for (let y = 34; y < WORLD_H; y += 144) {
-      ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
-    }
-  } else if (era === 2) {
-    ctx.strokeStyle = "rgba(184,191,197,0.12)";
-    ctx.lineWidth = 1.5;
-    for (let x = 0; x <= WORLD_W; x += CELL * 2) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
-    }
-    for (let y = 0; y <= WORLD_H; y += CELL * 2) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
-    }
-    ctx.fillStyle = "rgba(214,166,84,0.18)";
-    for (let x = CELL; x < WORLD_W; x += CELL * 2) for (let y = CELL; y < WORLD_H; y += CELL * 2) {
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
-    }
-  } else if (era === 3) {
-    ctx.strokeStyle = "rgba(181,74,60,0.12)";
-    ctx.lineWidth = 6;
-    for (let y = 28; y < WORLD_H; y += 112) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(145,151,154,0.11)";
-    ctx.lineWidth = 3;
-    for (let x = 24; x < WORLD_W; x += 156) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
-      for (let y = 24; y < WORLD_H; y += 72) {
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "rgba(215,165,84,0.10)";
+    for (let y = 0; y < WORLD_H; y += 52) {
+      for (let x = (Math.floor(y / 52) % 2) * 26; x < WORLD_W; x += 52) {
+        ctx.fillRect(x + 2, y + 2, 48, 48);
       }
     }
+    ctx.strokeStyle = "rgba(245,204,120,0.25)";
+    ctx.lineWidth = 2;
+    for (let x = -WORLD_H; x < WORLD_W; x += 92) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + WORLD_H, WORLD_H); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(112,67,27,0.30)";
+    for (let x = 44; x < WORLD_W; x += 154) for (let y = 38; y < WORLD_H; y += 132) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 9); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 9, y); ctx.closePath();
+      ctx.fill();
+    }
+  } else if (era === 2) {
+    ctx.strokeStyle = "rgba(210,217,222,0.24)";
+    ctx.lineWidth = 2;
+    for (let x = 0; x <= WORLD_W; x += CELL) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
+    }
+    for (let y = 0; y <= WORLD_H; y += CELL) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(24,28,31,0.32)";
+    for (let x = CELL * 0.5; x < WORLD_W; x += CELL) for (let y = CELL * 0.5; y < WORLD_H; y += CELL) {
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (era === 3) {
+    ctx.strokeStyle = "rgba(154,164,168,0.22)";
+    ctx.lineWidth = 5;
+    for (let x = 28; x < WORLD_W; x += 126) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(203,77,55,0.28)";
+    ctx.lineWidth = 3;
+    for (let y = 36; y < WORLD_H; y += 92) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(232,126,66,0.26)";
+    for (let i = 0; i < 22; i++) {
+      const x = (i * 109) % WORLD_W;
+      const y = (i * 67) % WORLD_H;
+      ctx.fillRect(x, y, 11, 3);
+    }
   } else {
-    ctx.strokeStyle = "rgba(134,214,239,0.13)";
-    ctx.lineWidth = 1;
-    const drift = (time * 12) % CELL;
+    const drift = (time * 18) % CELL;
+    ctx.strokeStyle = "rgba(122,226,255,0.26)";
+    ctx.lineWidth = 1.2;
     for (let x = -CELL + drift; x < WORLD_W + CELL; x += CELL) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); ctx.stroke();
     }
     for (let y = 0; y < WORLD_H; y += CELL) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); ctx.stroke();
     }
-    ctx.fillStyle = "rgba(134,214,239,0.16)";
-    for (let i = 0; i < 18; i++) {
-      const x = (i * 127 + time * 18) % WORLD_W;
+    ctx.fillStyle = "rgba(134,226,255,0.28)";
+    for (let i = 0; i < 24; i++) {
+      const x = (i * 127 + time * 24) % WORLD_W;
       const y = (i * 83) % WORLD_H;
-      ctx.fillRect(x, y, 12, 2);
-      ctx.fillRect(x + 10, y, 2, 10);
+      ctx.fillRect(x, y, 16, 2);
+      ctx.fillRect(x + 14, y, 2, 12);
     }
   }
+
   ctx.restore();
 }
 
 function drawEraProps(ctx: CanvasRenderingContext2D, era: number, time: number) {
   const points = [
-    { x: 5.4 * CELL, y: 0.48 * CELL },
-    { x: 12.6 * CELL, y: 2.45 * CELL },
-    { x: 0.7 * CELL, y: 6.9 * CELL },
-    { x: 7.0 * CELL, y: 7.8 * CELL },
+    { x: 5.4 * CELL, y: 0.55 * CELL },
+    { x: 12.5 * CELL, y: 2.5 * CELL },
+    { x: 0.72 * CELL, y: 6.8 * CELL },
+    { x: 7.0 * CELL, y: 7.75 * CELL },
   ];
+
   ctx.save();
   if (era === 0) {
-    ctx.fillStyle = "rgba(72,55,45,0.42)";
-    for (const p of points) { ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(p.x - 3, p.y - 18, 6, 19); }
+    ctx.fillStyle = "rgba(72,55,45,0.48)";
+    for (const p of points) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(p.x - 3, p.y - 18, 6, 19);
+    }
   } else if (era === 1) {
     for (const p of points) {
-      ctx.strokeStyle = "rgba(212,166,91,0.48)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x, p.y + 18); ctx.lineTo(p.x, p.y - 18); ctx.stroke();
-      ctx.fillStyle = "rgba(165,104,54,0.5)"; ctx.beginPath(); ctx.moveTo(p.x + 2, p.y - 16); ctx.lineTo(p.x + 17, p.y - 10); ctx.lineTo(p.x + 2, p.y - 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(70,43,22,0.88)";
+      ctx.fillRect(p.x - 13, p.y - 12, 26, 28);
+      ctx.fillStyle = "rgba(190,126,55,0.92)";
+      ctx.fillRect(p.x - 10, p.y - 9, 20, 22);
+      ctx.strokeStyle = "rgba(245,202,111,0.92)";
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - 32); ctx.lineTo(p.x, p.y + 14); ctx.stroke();
+      ctx.fillStyle = "rgba(179,86,40,0.95)";
+      ctx.beginPath(); ctx.moveTo(p.x + 2, p.y - 29); ctx.lineTo(p.x + 23, p.y - 20); ctx.lineTo(p.x + 2, p.y - 11); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "rgba(247,211,129,0.80)";
+      ctx.beginPath(); ctx.arc(p.x, p.y - 2, 5, 0, Math.PI * 2); ctx.fill();
     }
   } else if (era === 2) {
     for (const p of points) {
-      ctx.fillStyle = "rgba(115,122,128,0.42)"; ctx.fillRect(p.x - 13, p.y - 10, 26, 20);
-      ctx.strokeStyle = "rgba(185,191,196,0.5)"; ctx.lineWidth = 2; ctx.strokeRect(p.x - 13, p.y - 10, 26, 20);
-      ctx.fillStyle = "rgba(215,166,84,0.7)"; ctx.beginPath(); ctx.arc(p.x + Math.sin(time + p.x) * 4, p.y - 15, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(45,49,53,0.90)"; ctx.fillRect(p.x - 18, p.y - 14, 36, 28);
+      ctx.strokeStyle = "rgba(199,207,214,0.88)"; ctx.lineWidth = 3; ctx.strokeRect(p.x - 18, p.y - 14, 36, 28);
+      ctx.fillStyle = "rgba(210,146,67,0.90)";
+      for (const sx of [-12, 12]) for (const sy of [-8, 8]) { ctx.beginPath(); ctx.arc(p.x + sx, p.y + sy, 2.5, 0, Math.PI * 2); ctx.fill(); }
     }
   } else if (era === 3) {
     for (const p of points) {
-      ctx.strokeStyle = "rgba(132,139,142,0.55)"; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(p.x - 18, p.y + 12); ctx.lineTo(p.x + 14, p.y + 12); ctx.lineTo(p.x + 14, p.y - 15); ctx.stroke();
-      ctx.fillStyle = "rgba(185,74,60,0.58)"; ctx.fillRect(p.x - 22, p.y + 7, 8, 10);
+      ctx.fillStyle = "rgba(38,43,46,0.94)"; ctx.fillRect(p.x - 21, p.y - 13, 42, 26);
+      ctx.strokeStyle = "rgba(164,174,178,0.84)"; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(p.x - 25, p.y + 17); ctx.lineTo(p.x + 18, p.y + 17); ctx.lineTo(p.x + 18, p.y - 22); ctx.stroke();
+      ctx.fillStyle = "rgba(210,75,54,0.94)"; ctx.fillRect(p.x - 26, p.y + 11, 10, 12);
+      ctx.fillStyle = "rgba(232,151,69,0.86)"; ctx.fillRect(p.x + 8, p.y - 7, 7, 7);
     }
   } else {
     for (let i = 0; i < points.length; i++) {
-      const p = points[i]; const pulse = 0.45 + Math.sin(time * 2 + i) * 0.16;
-      ctx.strokeStyle = `rgba(134,214,239,${pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 12 + Math.sin(time + i) * 2, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "rgba(134,214,239,0.35)"; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(p.x - 22, p.y); ctx.lineTo(p.x - 12, p.y); ctx.moveTo(p.x + 12, p.y); ctx.lineTo(p.x + 22, p.y); ctx.stroke();
+      const p = points[i];
+      const pulse = 0.62 + Math.sin(time * 2.4 + i) * 0.18;
+      ctx.strokeStyle = `rgba(134,226,255,${pulse})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 16 + Math.sin(time + i) * 2, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 27 + Math.cos(time * 1.4 + i) * 2, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(134,226,255,0.48)";
+      ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
+      ctx.beginPath(); ctx.moveTo(p.x - 34, p.y); ctx.lineTo(p.x - 17, p.y); ctx.moveTo(p.x + 17, p.y); ctx.lineTo(p.x + 34, p.y); ctx.stroke();
     }
   }
   ctx.restore();
