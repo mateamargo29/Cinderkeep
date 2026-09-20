@@ -19,6 +19,6 @@ run(gradle, ["assembleDebug"], { cwd: resolve("android") });
 const source = resolve("android", "app", "build", "outputs", "apk", "debug", "app-debug.apk");
 if (!existsSync(source)) throw new Error("No se encontró la APK esperada");
 mkdirSync("release", { recursive: true });
-const target = resolve("release", "Cinderkeep-v3.1.0-debug.apk");
+const target = resolve("release", "Cinderkeep-v3.1.1-debug.apk");
 copyFileSync(source, target);
 console.log(`[Cinderkeep] APK lista: ${target}`);
