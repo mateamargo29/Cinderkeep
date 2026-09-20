@@ -33,8 +33,8 @@ export const CAMPAIGN_MAPS: CampaignMapDef[] = [
     name: "Paso de Ceniza",
     chapter: "Capítulo I",
     era: "ash",
-    eraLabel: "Ceniza",
-    description: "El sendero original. Ideal para fundar el bastión y aprender a evolucionar durante la batalla.",
+    eraLabel: "Piedra",
+    description: "El primer territorio del bastión. Piedra, madera y fuego son todo lo que existe antes de descubrir la metalurgia."
     waypoints: [[0,1],[10,1],[10,3],[2,3],[2,5],[11,5],[11,7],[13,7]],
     enemyHpMultiplier: 1,
     enemySpeedMultiplier: 1,
@@ -44,7 +44,7 @@ export const CAMPAIGN_MAPS: CampaignMapDef[] = [
       kind: "survive",
       title: "Primera Guardia",
       summary: "Resiste 8 oleadas y conserva el bastión.",
-      briefing: "Establece la primera línea defensiva. Sobrevive ocho oleadas; cualquier cantidad de vidas restante es suficiente.",
+      briefing: "Levanta una defensa primitiva con piedra, madera y sílex. Sobrevive ocho oleadas y alcanza la Edad del Bronce."
       waveLimit: 8,
       target: 8,
     },
