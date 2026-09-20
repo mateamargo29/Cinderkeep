@@ -250,3 +250,43 @@ button, canvas { -webkit-touch-callout: none; }
     background: rgba(12, 11, 10, .92);
   }
 }
+
+
+@media (orientation: landscape) {
+  .game-active .mission-hud {
+    top: .3rem;
+  }
+
+  .game-active .mission-hud .inline-flex {
+    min-height: 1.9rem;
+    padding: .2rem .5rem;
+    font-size: .68rem;
+  }
+
+  .game-active .mission-hud .hud-audio {
+    width: 1.95rem;
+    height: 1.95rem;
+  }
+
+  .game-active .game-footer {
+    padding-top: .28rem;
+    padding-bottom: max(.25rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .game-active .game-footer .tower-build-button,
+  .game-active .game-footer > div > button {
+    min-height: 3.15rem;
+  }
+
+  .game-active .game-footer .tower-build-button {
+    min-width: 4.9rem;
+  }
+
+  .game-active .game-footer > div {
+    gap: .35rem;
+  }
+
+  .game-active .game-footer .mb-2 {
+    margin-bottom: .3rem;
+  }
+}
