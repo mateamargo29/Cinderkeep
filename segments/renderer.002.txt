@@ -15,6 +15,7 @@ function drawEnemies(ctx: CanvasRenderingContext2D, game: Game, assets: GameAsse
     ctx.translate(e.x, e.y);
     ctx.rotate(e.facing);
     const eraFilter =
+      e.era === 0 ? "sepia(0.62) saturate(0.82) contrast(1.16) brightness(0.94)" :
       e.era === 1 ? "sepia(0.95) saturate(1.8) brightness(1.08)" :
       e.era === 2 ? "grayscale(0.72) contrast(1.28) brightness(1.08)" :
       e.era === 3 ? "grayscale(0.48) contrast(1.35) brightness(0.94)" :
@@ -61,7 +62,43 @@ function drawEnemyEvolution(ctx: CanvasRenderingContext2D, e: Enemy, size: numbe
   const color = colors[Math.max(0, Math.min(e.era, colors.length - 1))];
   ctx.save();
 
-  if (e.era === 1) {
+  if (e.era === 0) {
+    ctx.globalAlpha = 0.94;
+
+    if (e.role === "infantry") {
+      ctx.fillStyle = "rgba(92,67,45,0.82)";
+      ctx.beginPath(); ctx.arc(0, -size * 0.23, size * 0.18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.28, -size * 0.04); ctx.lineTo(size * 0.20, -size * 0.10);
+      ctx.lineTo(size * 0.29, size * 0.34); ctx.lineTo(-size * 0.25, size * 0.30); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#d0bb88"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(size * 0.14, -size * 0.04); ctx.lineTo(size * 0.43, -size * 0.33); ctx.stroke();
+      ctx.fillStyle = "#a69a75";
+      ctx.beginPath(); ctx.moveTo(size * 0.40,-size * 0.36); ctx.lineTo(size * 0.52,-size * 0.42); ctx.lineTo(size * 0.47,-size * 0.28); ctx.closePath(); ctx.fill();
+    } else if (e.role === "fast") {
+      ctx.fillStyle = "rgba(104,76,50,0.84)";
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.46, size * 0.10); ctx.lineTo(-size * 0.08, -size * 0.32);
+      ctx.lineTo(size * 0.38, -size * 0.16); ctx.lineTo(size * 0.23, size * 0.27); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#c9b07c"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-size * 0.36,-size * 0.03); ctx.lineTo(size * 0.38,-size * 0.30); ctx.stroke();
+    } else {
+      ctx.fillStyle = e.boss ? "rgba(65,57,45,0.96)" : "rgba(78,68,53,0.92)";
+      ctx.beginPath(); ctx.arc(0, 0, size * (e.boss ? 0.48 : 0.43), 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#b8a57d"; ctx.lineWidth = e.boss ? 5 : 3.5;
+      ctx.beginPath(); ctx.arc(0, 0, size * (e.boss ? 0.54 : 0.49), 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(147,132,98,0.92)";
+      ctx.beginPath(); ctx.moveTo(-size * 0.33,-size * 0.21); ctx.lineTo(0,-size * 0.45); ctx.lineTo(size * 0.33,-size * 0.21); ctx.lineTo(size * 0.24,size * 0.26); ctx.lineTo(-size * 0.24,size * 0.26); ctx.closePath(); ctx.fill();
+      if (e.boss) {
+        ctx.strokeStyle = "#d6b36c"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-size * 0.32,-size * 0.48); ctx.lineTo(-size * 0.10,-size * 0.35); ctx.lineTo(0,-size * 0.55); ctx.lineTo(size * 0.10,-size * 0.35); ctx.lineTo(size * 0.32,-size * 0.48); ctx.stroke();
+      }
+    }
+
+    ctx.strokeStyle = "rgba(223,190,120,0.42)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.56, 0, Math.PI * 2); ctx.stroke();
+  } else if (e.era === 1) {
     ctx.globalAlpha = 0.92;
     ctx.fillStyle = "rgba(190,122,48,0.68)";
     if (e.role === "infantry") {
@@ -207,7 +244,7 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, game: Game) {
         ctx.shadowBlur = 10;
         ctx.shadowColor = "#86d6ef";
       }
-      ctx.fillStyle = p.branchId === "ballista:siege" ? "#d8c39b" : p.branchId === "ballista:rapid" ? "#eee8e0" : p.techEra >= 4 ? "#d8f3ff" : p.techEra >= 3 ? "#b54a3c" : "#c4b08a";
+      ctx.fillStyle = p.branchId === "ballista:siege" ? "#d8c39b" : p.branchId === "ballista:rapid" ? "#eee8e0" : p.techEra >= 4 ? "#d8f3ff" : p.techEra >= 3 ? "#b54a3c" : p.techEra === 0 ? "#b7a77b" : "#c4b08a";
       const thickness = p.branchId === "ballista:siege" ? 4 : 2.8;
       ctx.fillRect(-8, -thickness / 2, 16, thickness);
       ctx.fillStyle = "#8a7a62";
@@ -217,7 +254,7 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, game: Game) {
         ctx.shadowBlur = 12;
         ctx.shadowColor = "#86d6ef";
       }
-      ctx.fillStyle = p.branchId === "mortar:incendiary" ? "#e06a2f" : p.techEra >= 4 ? "#86d6ef" : p.techEra >= 3 ? "#8f8a82" : "#2a2420";
+      ctx.fillStyle = p.branchId === "mortar:incendiary" ? "#e06a2f" : p.techEra >= 4 ? "#86d6ef" : p.techEra >= 3 ? "#8f8a82" : p.techEra === 0 ? "#625b4b" : "#2a2420";
       ctx.beginPath();
       ctx.arc(0, 0, p.branchId === "mortar:demolition" ? 7 : 5.5, 0, Math.PI * 2);
       ctx.fill();

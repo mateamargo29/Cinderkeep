@@ -5,16 +5,16 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { Game } from "@/game/engine";
 import { CAMPAIGN_MAPS, META_UPGRADES, getCampaignMap, upgradeCost as metaUpgradeCost } from "@/game/campaign";
 import { TOWERS, getEraEnemyRoster } from "@/game/config";
-import { ERAS, TECH_TREE, getBranches, getEraProject, getWorldTheme } from "@/game/evolution";
+import { ERAS, TECH_TREE, getBranches, getEraProject, getTowerName, getWorldTheme } from "@/game/evolution";
 import { DIFFICULTIES } from "@/game/settings";
 import type { DifficultyId, GameSpeed, HudState, MapId, MetaUpgradeId, TowerKind } from "@/game/types";
 
 const INITIAL: HudState = {
   gold: 90, lives: 20, wave: 0, totalWaves: 8, phase: "menu", selectedKind: null, selectedTower: null,
   remainingInWave: 0, muted: false, assetsReady: false, hoverCol: -1, hoverRow: -1,
-  era: "ash", eraName: "Era de Ceniza", eraIndex: 0, eraCount: 5, researchCost: 120, researchReady: false,
+  era: "ash", eraName: "Edad de Piedra", eraIndex: 0, eraCount: 5, researchCost: 120, researchReady: false,
   researchedTech: [], availableTech: [], selectedTech: null,
-  campaignMap: "ash-pass", campaignMapName: "Paso de Ceniza", campaignEraLabel: "Ceniza",
+  campaignMap: "ash-pass", campaignMapName: "Paso de Ceniza", campaignEraLabel: "Piedra",
   campaignXp: 0, campaignLevel: 1, campaignShards: 0, campaignVictories: [],
   campaignUpgrades: { arsenal: 0, treasury: 0, bastion: 0, salvage: 0 },
   campaignRewardXp: 0, campaignRewardShards: 0,
@@ -327,7 +327,7 @@ export function Cinderkeep() {
             {TOWER_KINDS.map((kind) => (
               <button key={kind} disabled={hud.gold < TOWERS[kind].cost} onClick={() => g()?.chooseKind(hud.selectedKind === kind ? null : kind)}
                 className={`tower-build-button min-w-24 rounded-lg border px-3 py-2 text-left ${hud.selectedKind === kind ? "border-brass bg-surface-2" : "border-border bg-bg"} disabled:opacity-40`}>
-                <p className="font-display text-xs font-semibold">{TOWERS[kind].name}</p><p className="text-[10px] text-muted">🪙 {TOWERS[kind].cost}</p>
+                <p className="font-display text-xs font-semibold">{getTowerName(kind, hud.eraIndex)}</p><p className="text-[10px] text-muted">🪙 {TOWERS[kind].cost}</p>
               </button>
             ))}
             <button className="min-w-24 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-semibold" onClick={() => setTechOpen(true)}>Consejo</button>
