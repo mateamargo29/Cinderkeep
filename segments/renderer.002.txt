@@ -148,15 +148,37 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, game: Game) {
     if (!p.alive) continue;
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.rotate(Math.atan2(p.vy, p.vx));
+    const angle = Math.atan2(p.vy, p.vx);
+    ctx.rotate(angle);
+    if (p.techEra >= 2 || p.branchId) {
+      const trail = p.techEra >= 4 ? 22 : p.techEra >= 3 ? 16 : 11;
+      const trailColor =
+        p.kind === "spire" ? (p.branchId === "spire:frost" ? "rgba(169,216,232,0.55)" : "rgba(240,192,138,0.48)") :
+        p.kind === "mortar" ? (p.branchId === "mortar:incendiary" ? "rgba(224,106,47,0.48)" : "rgba(181,74,60,0.34)") :
+        "rgba(216,210,200,0.38)";
+      ctx.strokeStyle = trailColor;
+      ctx.lineWidth = p.techEra >= 4 ? 3 : 2;
+      ctx.beginPath();
+      ctx.moveTo(-4, 0);
+      ctx.lineTo(-trail, 0);
+      ctx.stroke();
+    }
     if (p.kind === "ballista") {
-      ctx.fillStyle = p.branchId === "ballista:siege" ? "#d8c39b" : p.branchId === "ballista:rapid" ? "#eee8e0" : p.techEra >= 4 ? "#d8d2c8" : p.techEra >= 3 ? "#b54a3c" : "#c4b08a";
+      if (p.techEra >= 4) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#86d6ef";
+      }
+      ctx.fillStyle = p.branchId === "ballista:siege" ? "#d8c39b" : p.branchId === "ballista:rapid" ? "#eee8e0" : p.techEra >= 4 ? "#d8f3ff" : p.techEra >= 3 ? "#b54a3c" : "#c4b08a";
       const thickness = p.branchId === "ballista:siege" ? 4 : 2.8;
       ctx.fillRect(-8, -thickness / 2, 16, thickness);
       ctx.fillStyle = "#8a7a62";
       ctx.fillRect(6, -2.2, 5, 4.4);
     } else if (p.kind === "mortar") {
-      ctx.fillStyle = p.branchId === "mortar:incendiary" ? "#e06a2f" : p.techEra >= 4 ? "#d8d2c8" : p.techEra >= 3 ? "#8f8a82" : "#2a2420";
+      if (p.techEra >= 4) {
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "#86d6ef";
+      }
+      ctx.fillStyle = p.branchId === "mortar:incendiary" ? "#e06a2f" : p.techEra >= 4 ? "#86d6ef" : p.techEra >= 3 ? "#8f8a82" : "#2a2420";
       ctx.beginPath();
       ctx.arc(0, 0, p.branchId === "mortar:demolition" ? 7 : 5.5, 0, Math.PI * 2);
       ctx.fill();
@@ -165,7 +187,9 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, game: Game) {
       ctx.arc(-1, -1, 2, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, 9);
+      ctx.shadowBlur = p.techEra >= 3 ? 12 : 7;
+      ctx.shadowColor = p.branchId === "spire:frost" ? "#a9d8e8" : p.techEra >= 4 ? "#86d6ef" : "#f0c08a";
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, p.techEra >= 4 ? 12 : 9);
       g.addColorStop(0, p.branchId === "spire:frost" ? "#d8f3ff" : "#f0c08a");
       g.addColorStop(1, p.branchId === "spire:frost" ? "rgba(108,188,224,0)" : "rgba(196,92,38,0)");
       ctx.fillStyle = g;
