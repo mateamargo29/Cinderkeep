@@ -43,10 +43,10 @@ export type WorldTheme = {
 
 export const WORLD_THEMES: WorldTheme[] = [
   { name: "Yermo de Ceniza", subtitle: "Brasas, roca oscura y ruinas antiguas.", tint: "rgba(54,34,27,0.18)", pathGlow: "rgba(196,92,38,0.16)", keepAccent: "#c45c26", riftColor: "#c45c26", ambient: "embers" },
-  { name: "Frontera de Bronce", subtitle: "Estandartes, metal cálido y polvo de campaña.", tint: "rgba(126,91,48,0.14)", pathGlow: "rgba(212,166,91,0.18)", keepAccent: "#d4a65b", riftColor: "#d08a45", ambient: "dust" },
-  { name: "Bastión de Hierro", subtitle: "Fortificaciones, remaches y chispas de forja.", tint: "rgba(76,82,88,0.16)", pathGlow: "rgba(166,174,181,0.17)", keepAccent: "#a8afb5", riftColor: "#b26a45", ambient: "sparks" },
-  { name: "Distrito Industrial", subtitle: "Humo, tuberías y maquinaria de guerra.", tint: "rgba(42,48,52,0.22)", pathGlow: "rgba(185,74,60,0.18)", keepAccent: "#b94a3c", riftColor: "#d15b3b", ambient: "smoke" },
-  { name: "Nexo del Futuro", subtitle: "Circuitos, energía y geometría cuántica.", tint: "rgba(34,54,76,0.22)", pathGlow: "rgba(120,205,235,0.22)", keepAccent: "#86d6ef", riftColor: "#86d6ef", ambient: "quantum" },
+  { name: "Frontera de Bronce", subtitle: "Piedra solar, estandartes y metal bruñido.", tint: "rgba(128,79,32,0.34)", pathGlow: "rgba(232,177,82,0.72)", keepAccent: "#e0ad58", riftColor: "#d88832", ambient: "dust" },
+  { name: "Bastión de Hierro", subtitle: "Fortificaciones, placas, remaches y hornos de guerra.", tint: "rgba(62,69,76,0.36)", pathGlow: "rgba(184,194,203,0.68)", keepAccent: "#bdc6cd", riftColor: "#c17548", ambient: "sparks" },
+  { name: "Distrito Industrial", subtitle: "Acero, humo, tuberías y maquinaria de guerra.", tint: "rgba(32,39,44,0.42)", pathGlow: "rgba(210,78,56,0.64)", keepAccent: "#cf563f", riftColor: "#e06545", ambient: "smoke" },
+  { name: "Nexo del Futuro", subtitle: "Circuitos luminosos, energía y arquitectura cuántica.", tint: "rgba(20,48,72,0.44)", pathGlow: "rgba(112,220,255,0.78)", keepAccent: "#86e2ff", riftColor: "#86e2ff", ambient: "quantum" },
 ];
 
 export function getWorldTheme(eraIndex: number): WorldTheme {
